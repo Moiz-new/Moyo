@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "858073979116",
+    "project_id": "moyo-159ed",
+    "storage_bucket": "moyo-159ed.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:858073979116:android:3c7358f3a0e7452d372dc9",
+        "android_client_info": {
+          "package_name": "com.acore.moyo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "858073979116-20cae99s1altkvsj0uutu6mtgtrle88o.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.acore.moyo",
+            "certificate_hash": "bb35e2c8e71612932433805260dfc6db8f33f20d"
+          }
+        },
+        {
+          "client_id": "858073979116-9c856hligus64nfg58rnoshocc64mg0g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBH_X1V6u5Af8FFJmMmN2kYkMx2Sh6SJ3Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "858073979116-9c856hligus64nfg58rnoshocc64mg0g.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "858073979116-rp7msftc9id9l40a8vrss3f0c1g60uji.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.acore.moyo"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

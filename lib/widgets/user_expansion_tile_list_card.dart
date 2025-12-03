@@ -1,0 +1,108 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:first_flutter/constants/colorConstant/color_constant.dart';
+import 'package:flutter/material.dart';
+
+class UserExpansionTileListCard extends StatelessWidget {
+  final String dp;
+  final String title;
+  final String subtitle;
+
+  const UserExpansionTileListCard({
+    super.key,
+    required this.dp,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      child: ExpansionTile(
+        backgroundColor: Colors.white,
+        collapsedBackgroundColor: Colors.white,
+        collapsedShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        leading: Container(
+          clipBehavior: Clip.hardEdge,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(100)),
+          height: 45,
+          width: 45,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CachedNetworkImage(
+                imageUrl: dp,
+                fit: BoxFit.cover,
+                placeholder: (context, url) =>
+                    Image.asset('assets/images/moyo_image_placeholder.png'),
+                errorWidget: (context, url, error) =>
+                    Image.asset('assets/images/moyo_image_placeholder.png'),
+              ),
+            ],
+          ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        subtitle: Text(subtitle),
+        childrenPadding: const EdgeInsets.all(16),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Choose Service Type',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: ColorConstant.black,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, "/UserInstantServiceScreen");
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ColorConstant.moyoOrange,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Instant'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, "/UserInstantServiceScreen");
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: ColorConstant.moyoOrange),
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Later',
+                    style: TextStyle(color: ColorConstant.moyoOrange),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

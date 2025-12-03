@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>858073979116-rp7msftc9id9l40a8vrss3f0c1g60uji.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.858073979116-rp7msftc9id9l40a8vrss3f0c1g60uji</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>858073979116-20cae99s1altkvsj0uutu6mtgtrle88o.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBU-9QrJBntM7m5f4FSz-PnYk79oYI3Pvk</string>
+	<key>GCM_SENDER_ID</key>
+	<string>858073979116</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.acore.moyo</string>
+	<key>PROJECT_ID</key>
+	<string>moyo-159ed</string>
+	<key>STORAGE_BUCKET</key>
+	<string>moyo-159ed.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:858073979116:ios:6e76ee6438b34ba4372dc9</string>
+</dict>
+</plist>
