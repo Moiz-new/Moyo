@@ -1,11 +1,20 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first_flutter/constants/colorConstant/color_constant.dart';
+import 'package:first_flutter/screens/user_screens/Profile/EditProfileScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../screens/user_screens/WidgetProviders/ServiceAPI.dart';
+import '../../baseControllers/APis.dart';
+
+import '../user_screens/WidgetProviders/ServiceAPI.dart';
+import 'ServiceArrivalProvider.dart';
 
 class ProviderConfirmServiceDetails extends StatelessWidget {
   final String? serviceId;
@@ -16,6 +25,7 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
   final String? providerPhone;
   final String? dp;
   final String? name;
+  final String? budget;
   final String? rating;
   final String status;
   final VoidCallback? onStartWork;
@@ -45,6 +55,7 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
     this.providerPhone,
     this.dp,
     this.name,
+    this.budget,
     this.rating,
     this.status = "No status",
     this.durationType,
@@ -59,7 +70,7 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
     this.onCancel,
     this.onTaskComplete,
     this.onRateService,
-    this.onStartWork, // Add this line
+    this.onStartWork,
   });
 
   // Add this method to show note popup
@@ -178,188 +189,287 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
   }
 
   Future<Map<String, String>?> _showReBidDialog(BuildContext context) async {
-    final TextEditingController amountController = TextEditingController();
+    final TextEditingController amountController = TextEditingController(
+      text: price,
+    );
+    double baseAmount = double.tryParse(price!) ?? 0;
+
     final TextEditingController noteController = TextEditingController(
       text: "cash",
     );
+    String? amountError; // inline error message
 
     return showDialog<Map<String, String>>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Re-Bid Service',
-            style: GoogleFonts.roboto(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1D1B20),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter your new bid amount and note',
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  color: Color(0xFF7A7A7A),
-                ),
+        // Use StatefulBuilder to update inline warning
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Validation function
+            void validateAmount() {
+              if (amountController.text.isEmpty) {
+                setState(() => amountError = null);
+                return;
+              }
+
+              double entered = double.tryParse(amountController.text) ?? 0;
+              double minAllowed = baseAmount * 0.70;
+              double maxAllowed = baseAmount * 2.00;
+
+              setState(() {
+                if (entered < minAllowed) {
+                  amountError =
+                      "Amount must be at least ₹${minAllowed.toStringAsFixed(2)}";
+                } else if (entered > maxAllowed) {
+                  amountError =
+                      "Amount must not exceed ₹${maxAllowed.toStringAsFixed(2)}";
+                } else {
+                  amountError = null;
+                }
+              });
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              SizedBox(height: 16),
-              // Amount TextField
-              Text(
-                'Amount *',
+              title: Text(
+                'Re-Bid Service',
                 style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xFF1D1B20),
                 ),
               ),
-              SizedBox(height: 8),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: 'Enter amount',
-                  prefixText: '₹ ',
-                  hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: ColorConstant.moyoOrange,
-                      width: 2,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Enter your new bid amount and note',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      color: Color(0xFF7A7A7A),
                     ),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.all(12),
-                ),
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  color: Color(0xFF1D1B20),
-                ),
-              ),
-              SizedBox(height: 16),
-              // Note TextField
-              Text(
-                'Note',
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1D1B20),
-                ),
-              ),
-              SizedBox(height: 8),
-              TextField(
-                controller: noteController,
-                maxLines: 3,
-                maxLength: 200,
-                decoration: InputDecoration(
-                  hintText: 'Enter note...',
-                  hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: ColorConstant.moyoOrange,
-                      width: 2,
+                  SizedBox(height: 16),
+                  // Amount TextField
+                  Text(
+                    'Amount *',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1D1B20),
                     ),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.all(12),
-                ),
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  color: Color(0xFF1D1B20),
-                ),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => validateAmount(),
+                    decoration: InputDecoration(
+                      hintText: 'Enter amount',
+                      prefixText: '₹ ',
+                      errorText: amountError,
+                      // inline warning here
+                      hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: ColorConstant.moyoOrange,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.all(12),
+                    ),
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  // Note TextField
+                  Text(
+                    'Note',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: noteController,
+                    maxLines: 3,
+                    maxLength: 200,
+                    decoration: InputDecoration(
+                      hintText: 'Enter note...',
+                      hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: ColorConstant.moyoOrange,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.all(12),
+                    ),
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(null);
-              },
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.roboto(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF7A7A7A),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(null);
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF7A7A7A),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final amount = amountController.text.trim();
-                final note = noteController.text.trim();
+                ElevatedButton(
+                  onPressed: () {
+                    final amount = amountController.text.trim();
+                    final note = noteController.text.trim();
 
-                if (amount.isEmpty) {
-                  _showErrorSnackbar(context, 'Please enter amount');
-                  return;
-                }
+                    double entered = double.tryParse(amount) ?? 0;
+                    double minAllowed = baseAmount * 0.70;
+                    double maxAllowed = baseAmount * 2.00;
+                    if (entered < minAllowed) {
+                      _showErrorSnackbar(
+                        context,
+                        "Amount must be at least ₹${minAllowed.toStringAsFixed(2)}",
+                      );
+                      return;
+                    } else if (entered > maxAllowed) {
+                      _showErrorSnackbar(
+                        context,
+                        "Amount must not exceed ₹${maxAllowed.toStringAsFixed(2)}",
+                      );
+                      return;
+                    }
 
-                // Validate amount is numeric
-                if (double.tryParse(amount) == null) {
-                  _showErrorSnackbar(context, 'Please enter valid amount');
-                  return;
-                }
+                    if (amount.isEmpty) {
+                      _showErrorSnackbar(context, 'Please enter amount');
+                      return;
+                    }
 
-                if (note.isEmpty) {
-                  _showErrorSnackbar(context, 'Please enter a note');
-                  return;
-                }
+                    if (double.tryParse(amount) == null) {
+                      _showErrorSnackbar(context, 'Please enter valid amount');
+                      return;
+                    }
 
-                Navigator.of(context).pop({'amount': amount, 'note': note});
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFCD3232),
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                    if (note.isEmpty) {
+                      _showErrorSnackbar(context, 'Please enter a note');
+                      return;
+                    }
+
+                    Navigator.of(context).pop({'amount': amount, 'note': note});
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFCD3232),
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'Submit Re-Bid',
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-              ),
-              child: Text(
-                'Submit Re-Bid',
-                style: GoogleFonts.roboto(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
   }
 
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      print('Error getting auth token: $e');
+      return null;
+    }
+  }
+
   // Add this method to handle Accept button click
   Future<void> _handleAcceptService(BuildContext context) async {
+    try {
+      final token = await _getAuthToken();
+
+      if (token == null || token.isEmpty) {
+        throw Exception('Authentication token not found. Please login again.');
+      }
+
+      final url = Uri.parse('$base_url/api/auth/profile');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        bool isRegister = data['profile']['isregister'] ?? false;
+
+        if (isRegister == false) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  EditProfileScreen(), // Replace with your target page
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      _showErrorSnackbar(context, 'Service ID is missing');
+      return;
+    }
+
     // Validate required fields
     if (serviceId == null || serviceId!.isEmpty) {
       _showErrorSnackbar(context, 'Service ID is missing');
@@ -500,9 +610,12 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print("Current status: $status"); // Better debug print
-    print("isprovider: $isProvider"); // Better debug print
-    print("isprovider: $serviceId"); // Better debug print
+    print("Current status: $status");
+    print("isprovider: $isProvider");
+    print("serviceId: $serviceId");
+
+    final statusLower = status.toLowerCase();
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
       child: Container(
@@ -515,29 +628,48 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
           spacing: 10,
           children: [
             _catSubCatDate(context, category, subCategory, date),
-            if (!(status == "completed" || status == "cancelled"))
+
+            // Hide SOS section for completed and cancelled
+            if (!(statusLower == "completed" || statusLower == "cancelled"))
               _sosPinTimeLeftCallMessage(context, pin, providerPhone),
+
             _dpNameStatus(context, _currentStatusChip(context, status)),
+
             _durationTypeDurationAndPrice(
               context,
               durationType,
               duration,
               price,
             ),
+
             _userAddress(context, address),
+
             if (particular != null) _particular(context, particular!),
+
             _description(context, description),
-            // Accept/ReBid for providers when status is open or empty
-            if ((status == "" || status == "open") && isProvider)
+
+            // Fixed: Wrap with Consumer to get the ServiceArrivalProvider
+            Consumer<ServiceArrivalProvider>(
+              builder: (context, arrivalProvider, child) {
+                return _buildCenterContent(context, arrivalProvider);
+              },
+            ),
+
+            // Accept/ReBid buttons - show for 'open' and 'pending' if provider
+            if ((statusLower == "open" || statusLower == "pending") &&
+                isProvider)
               _acceptReBid(context),
-         // Add this line
-            // Cancel button for users when status is confirmed or assigned
-            if ((status == "confirmed" || status == "assigned"))
+
+            // Cancel button - show for 'assigned' status
+            if (statusLower == "assigned" || statusLower == "arrived")
               _cancelTheService(context),
-            // Task complete for ongoing status
-            if (status == "ongoing") _taskComplete(context),
-            // Rate service for completed status
-            if (status == "completed") _rateService(context),
+
+            // Task complete - show for 'started' or 'in_progress' status
+            if (statusLower == "started" || statusLower == "in_progress")
+              _taskComplete(context),
+
+            // Rate service - show for 'completed' status
+            if (statusLower == "completed") _rateService(context),
           ],
         ),
       ),
@@ -731,143 +863,127 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
   // (Copy all the other methods from your original code)
 
   Widget _currentStatusChip(BuildContext context, String? status3) {
-    switch (status3) {
+    final statusLower = status3?.toLowerCase() ?? '';
+
+    switch (statusLower) {
       case 'open':
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Color(0xFFE3F2FD),
-            borderRadius: BorderRadius.all(Radius.circular(50)),
-          ),
-          child: Text(
-            "Open",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              color: Color(0xFF1976D2),
-            ),
-          ),
+        return _buildStatusChip(
+          context,
+          text: "Open",
+          backgroundColor: Color(0xFFE8F5E9),
+          textColor: ColorConstant.moyoGreen,
         );
+
       case 'pending':
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: ColorConstant.moyoOrangeFade,
-            borderRadius: BorderRadius.all(Radius.circular(50)),
-          ),
-          child: Text(
-            "Pending",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              color: ColorConstant.moyoOrange,
-            ),
-          ),
+        return _buildStatusChip(
+          context,
+          text: "Pending",
+          backgroundColor: Color(0xFFFFF3E0),
+          textColor: Color(0xFFF57C00),
         );
-      case 'confirmed':
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Color(0xFFDEEAFA),
-            borderRadius: BorderRadius.all(Radius.circular(50)),
-          ),
-          child: Text(
-            "Confirmed",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              color: Color(0xFF1A4E88),
-            ),
-          ),
-        );
+
       case 'assigned':
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Color(0xFFE8F5E9),
-            borderRadius: BorderRadius.all(Radius.circular(50)),
-          ),
-          child: Text(
-            "Assigned",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              color: Color(0xFF2E7D32),
-            ),
-          ),
+        return _buildStatusChip(
+          context,
+          text: "Assigned",
+          backgroundColor: Color(0xFFDEEAFA),
+          textColor: Color(0xFF1A4E88),
         );
-      case 'ongoing':
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Color(0xFFE8FEEA),
-            borderRadius: BorderRadius.all(Radius.circular(50)),
-          ),
-          child: Text(
-            "Ongoing",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              color: Color(0xFF4ADB4A),
-            ),
-          ),
+
+      case 'started':
+        return _buildStatusChip(
+          context,
+          text: "Started",
+          backgroundColor: Color(0xFFE1F5FE),
+          textColor: Color(0xFF0277BD),
         );
+
+      case 'arrived':
+        return _buildStatusChip(
+          context,
+          text: "Arrived",
+          backgroundColor: Color(0xFFE8EAF6),
+          textColor: Color(0xFF3F51B5),
+        );
+
+      case 'in_progress':
+        return _buildStatusChip(
+          context,
+          text: "In Progress",
+          backgroundColor: Color(0xFFFFF9C4),
+          textColor: Color(0xFFF57F17),
+        );
+
       case 'completed':
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Color(0xFFDEEAFA),
-            borderRadius: BorderRadius.all(Radius.circular(50)),
-          ),
-          child: Text(
-            "Completed",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              color: Color(0xFF1A4E88),
-            ),
-          ),
+        return _buildStatusChip(
+          context,
+          text: "Completed",
+          backgroundColor: Color(0xFFE6F7C0),
+          textColor: ColorConstant.moyoGreen,
         );
+
       case 'cancelled':
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Color(0xFFFEE8E8),
-            borderRadius: BorderRadius.all(Radius.circular(50)),
-          ),
-          child: Text(
-            "Cancelled",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-              color: Color(0xFFDB4A4C),
-            ),
-          ),
+        return _buildStatusChip(
+          context,
+          text: "Cancelled",
+          backgroundColor: Color(0xFFFEE8E8),
+          textColor: Color(0xFFDB4A4C),
         );
+
+      case 'closed':
+        return _buildStatusChip(
+          context,
+          text: "Closed",
+          backgroundColor: Color(0xFFEEEEEE),
+          textColor: Color(0xFF616161),
+        );
+
+      // Legacy statuses for backward compatibility
+      case 'confirmed':
+        return _buildStatusChip(
+          context,
+          text: "Confirmed",
+          backgroundColor: Color(0xFFDEEAFA),
+          textColor: Color(0xFF1A4E88),
+        );
+
+      case 'ongoing':
+        return _buildStatusChip(
+          context,
+          text: "Ongoing",
+          backgroundColor: Color(0xFFFFF9C4),
+          textColor: Color(0xFFF57F17),
+        );
+
       default:
         return SizedBox(width: 0, height: 0);
     }
+  }
+
+  Widget _buildStatusChip(
+    BuildContext context, {
+    required String text,
+    required Color backgroundColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.all(Radius.circular(50)),
+      ),
+      child: Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.roboto(
+          textStyle: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+          color: textColor,
+        ),
+      ),
+    );
   }
 
   Widget _catSubCatDate(
@@ -914,107 +1030,105 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
   }
 
   Widget _sosPinTimeLeftCallMessage(
-      BuildContext context,
-      String? pin,
-      String? providerPhone,
-      ) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: Color(0xFFFF0000),
-              borderRadius: BorderRadius.all(Radius.circular(50)),
-            ),
-            child: Text(
-              "SOS",
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.roboto(
-                textStyle: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
-                color: Color(0xFFFFFFFF),
-              ),
-            ),
-          ),
-          // Center Start Work button
-          if (status == "assigned" && isProvider)
-            InkWell(
-              onTap: onStartWork,
-              child: Container(
+    BuildContext context,
+    String? pin,
+    String? providerPhone,
+  ) {
+    return Consumer<ServiceArrivalProvider>(
+      builder: (context, arrivalProvider, child) {
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // SOS Button
+              Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: ColorConstant.moyoGreen,
+                  color: Color(0xFFFF0000),
                   borderRadius: BorderRadius.all(Radius.circular(50)),
                 ),
-                child: Row(
-                  spacing: 6,
-                  children: [
-                    Icon(Icons.work, color: Colors.white, size: 16),
-                    Text(
-                      "Start Work",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.roboto(
-                        textStyle: Theme.of(
-                          context,
-                        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
-                        color: Color(0xFFFFFFFF),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          if (status == "confirmed")
-            Text(
-              "PIN - ${pin ?? "No Pin"}",
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.roboto(
-                textStyle: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                color: Color(0xFF000000),
-              ),
-            ),
-          if (status == "ongoing")
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              spacing: 16,
-              children: [
-                Text(
-                  "${_timeLeft(context, serviceStartTime: "", duration: "4") ?? "No Pin"} left",
+                child: Text(
+                  "SOS",
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.roboto(
-                    textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                    color: Color(0xFF0084FF),
+                    textStyle: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w500),
+                    color: Color(0xFFFFFFFF),
                   ),
                 ),
-                SvgPicture.asset("assets/icons/moyo_timer_of_service.svg"),
-              ],
-            ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            spacing: 16,
-            children: [
-              SvgPicture.asset("assets/icons/moyo_call_action.svg"),
-              SvgPicture.asset("assets/icons/moyo_message_action.svg"),
+              ),
+
+              if (status == "arrived")
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: _startWork(context),
+                  ),
+                ),
+
+              // Right Section - Call and Message
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                spacing: 16,
+                children: [
+                  SvgPicture.asset("assets/icons/moyo_call_action.svg"),
+                  SvgPicture.asset("assets/icons/moyo_message_action.svg"),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Widget _buildCenterContent(
+    BuildContext context,
+    ServiceArrivalProvider arrivalProvider,
+  ) {
+    final statusLower = status.toLowerCase();
+
+    // Show timer if arrived and timer is active
+    if (statusLower == "arrived" &&
+        isProvider &&
+        arrivalProvider.hasArrived &&
+        arrivalProvider.isTimerActive) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Color(0xFFE3F2FD),
+            borderRadius: BorderRadius.all(Radius.circular(50)),
+            border: Border.all(color: Color(0xFF1976D2), width: 1.5),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 8,
+            children: [
+              Icon(Icons.timer, color: Color(0xFF1976D2), size: 18),
+              Text(
+                arrivalProvider.formattedTime,
+                style: GoogleFonts.roboto(
+                  textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                  color: Color(0xFF1976D2),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Default - empty space
+    return SizedBox.shrink();
   }
 
   String? _timeLeft(
@@ -1026,38 +1140,34 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
   }
 
   Widget _startWork(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: InkWell(
-        onTap: onStartWork,
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: ColorConstant.moyoGreen,
-            border: Border.all(color: ColorConstant.moyoGreen, width: 1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            spacing: 8,
-            children: [
-              Icon(Icons.work, color: Colors.white, size: 20),
-              Text(
-                "Start Work",
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(
-                  textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: Color(0xFFFFFFFF),
-                    fontWeight: FontWeight.w500,
-                  ),
+    return InkWell(
+      onTap: onStartWork,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+        decoration: BoxDecoration(
+          color: ColorConstant.moyoGreen,
+          border: Border.all(color: ColorConstant.moyoGreen, width: 1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          spacing: 8,
+          children: [
+            Icon(Icons.work, color: Colors.white, size: 20),
+            Text(
+              "Start Work",
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.roboto(
+                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Color(0xFFFFFFFF),
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
