@@ -40,9 +40,9 @@ class SubcategoryService {
   }
 
   Future<Map<String, dynamic>?> createService(
-      Map<String, dynamic> serviceData, {
-        required String token,
-      }) async {
+    Map<String, dynamic> serviceData, {
+    required String token,
+  }) async {
     try {
       final response = await http.post(
         Uri.parse('$base_url/bid/api/service/create-service'),
@@ -58,9 +58,7 @@ class SubcategoryService {
         final jsonData = json.decode(response.body);
         return jsonData as Map<String, dynamic>;
       } else {
-        debugPrint(
-          'Failed to create service. Status code: ${response.statusCode}',
-        );
+        debugPrint('Choose required Fields');
         return null;
       }
     } catch (e) {
@@ -107,23 +105,33 @@ class UserInstantServiceProvider with ChangeNotifier {
 
   // Getters
   SubcategoryResponse? get subcategoryResponse => _subcategoryResponse;
+
   Subcategory? get selectedSubcategory => _selectedSubcategory;
+
   bool get isLoading => _isLoading;
+
   bool get isCreatingService => _isCreatingService;
+
   String? get error => _error;
 
   String get selectedServiceMode => _selectedServiceMode;
+
   Map<String, dynamic> get formValues => _formValues;
 
   double? get latitude => _latitude;
+
   double? get longitude => _longitude;
+
   String? get location => _location;
 
   DateTime? get startDate => _startDate;
+
   DateTime? get endDate => _endDate;
+
   int? get serviceDays => _serviceDays;
 
   DateTime? get scheduleDate => _scheduleDate;
+
   TimeOfDay? get scheduleTime => _scheduleTime;
 
   GoogleMapController? get mapController => _mapController;
@@ -273,17 +281,17 @@ class UserInstantServiceProvider with ChangeNotifier {
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
         _location =
-        '${place.street}, ${place.locality}, ${place.administrativeArea}';
+            '${place.street}, ${place.locality}, ${place.administrativeArea}';
       } else {
         _location =
-        'Lat: ${lat.toStringAsFixed(4)}, Lon: ${lon.toStringAsFixed(4)}';
+            'Lat: ${lat.toStringAsFixed(4)}, Lon: ${lon.toStringAsFixed(4)}';
       }
 
       notifyListeners();
     } catch (e) {
       debugPrint('Error getting address: $e');
       _location =
-      'Lat: ${lat.toStringAsFixed(4)}, Lon: ${lon.toStringAsFixed(4)}';
+          'Lat: ${lat.toStringAsFixed(4)}, Lon: ${lon.toStringAsFixed(4)}';
       notifyListeners();
     }
   }
@@ -426,8 +434,6 @@ class UserInstantServiceProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-
-
 
   void setScheduleTime(TimeOfDay time) {
     if (_scheduleTime != time) {
@@ -610,8 +616,8 @@ class UserInstantServiceProvider with ChangeNotifier {
           if (field.fieldType == 'number') {
             dynamicFields[field.fieldName] =
                 int.tryParse(value.toString()) ??
-                    double.tryParse(value.toString()) ??
-                    value;
+                double.tryParse(value.toString()) ??
+                value;
           } else {
             dynamicFields[field.fieldName] = value.toString();
           }
@@ -732,8 +738,9 @@ class UserInstantServiceProvider with ChangeNotifier {
 
       if (isSuccess) {
         final serviceIdDynamic = response['service']?['id'];
-        final serviceId =
-        serviceIdDynamic != null ? serviceIdDynamic.toString() : "unknown";
+        final serviceId = serviceIdDynamic != null
+            ? serviceIdDynamic.toString()
+            : "unknown";
 
         if (_natsService.isConnected) {
           try {

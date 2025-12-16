@@ -94,16 +94,19 @@ class _UserOngoingServiceState extends State<UserOngoingService> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.assignment_outlined,
                   size: 64,
-                  color: Colors.grey,
+                  color: Colors.grey[400],
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'No assigned services found',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),                ),
                 const SizedBox(height: 8),
                 Text(
                   'Services will appear here once assigned',

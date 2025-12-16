@@ -93,11 +93,15 @@ class _UserPendingServiceState extends State<UserPendingService> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+                 Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   'No closed or pending services found',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),
                 ),
               ],
             ),
@@ -122,24 +126,27 @@ class _UserPendingServiceState extends State<UserPendingService> {
                 priceBy: _getPriceBy(service),
                 providerCount: int.tryParse(service.totalBids) ?? 0,
                 status: service.status,
-                  onPress: () async {
-                    final result = await Navigator.pushNamed(
-                      context,
-                      '/UserServiceDetailsScreen',
-                      arguments: service,
-                    );
+                onPress: () async {
+                  final result = await Navigator.pushNamed(
+                    context,
+                    '/UserServiceDetailsScreen',
+                    arguments: service,
+                  );
 
-                    // Initialize NATS subscription when returning from details screen
-                    if (result == true && mounted) {
-                      final prefs = await SharedPreferences.getInstance();
-                      final userId = prefs.getInt('user_id');
+                  // Initialize NATS subscription when returning from details screen
+                  if (result == true && mounted) {
+                    final prefs = await SharedPreferences.getInstance();
+                    final userId = prefs.getInt('user_id');
 
-                      if (userId != null) {
-                        // Initialize NATS subscription when landing on this screen
-                        context.read<ServiceProvider>().initializeServiceNatsSubscription(userId);
-                      }
+                    if (userId != null) {
+                      // Initialize NATS subscription when landing on this screen
+                      context
+                          .read<ServiceProvider>()
+                          .initializeServiceNatsSubscription(userId);
                     }
-                  }              );
+                  }
+                },
+              );
             },
           ),
         );

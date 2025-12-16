@@ -127,16 +127,18 @@ class _UserSearchScreenBodyState extends State<UserSearchScreenBody> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SvgPicture.asset('assets/icons/moyo_big_search.svg'),
+          SvgPicture.asset(
+            'assets/icons/moyo_big_search.svg',
+            color: Colors.grey[400],
+          ),
           Text(
             'Search for services',
             textAlign: TextAlign.center,
-            style:
-                Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: const Color(0xFF000000),
-                  fontWeight: FontWeight.w600,
-                ) ??
-                const TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[600],
+            ),
           ),
           const SizedBox(height: 8),
           Text(
