@@ -183,6 +183,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
+
+  String capitalizeName(String? name) {
+    if (name == null || name.isEmpty) return '';
+    return name.toLowerCase().split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1);
+    }).join(' ');
+  }
+
   Widget _personalInformation(
     BuildContext context,
     UserProfileProvider profileProvider,
@@ -204,7 +213,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         PersonalInfoCard(
           isLabel: true,
           label: "Full Name",
-          title: profileProvider.fullName,
+          title: capitalizeName(profileProvider.fullName),
           iconPath: 'assets/icons/moyo_icon_info_card_full_name.svg',
         ),
         if (profileProvider.userProfile?.username != null)
@@ -344,6 +353,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
+  String maskAadhaar(String? aadhaar) {
+    if (aadhaar == null || aadhaar.isEmpty) return '';
+    final clean = aadhaar.replaceAll(' ', '');
+    if (clean.length <= 4) return clean;
+    final visible = clean.substring(clean.length - 4);
+    final masked = '*' * (clean.length - 4);
+    return masked + visible;
+  }
+
+  String maskPan(String? pan) {
+    if (pan == null || pan.isEmpty) return '';
+    final clean = pan.replaceAll(' ', '');
+    if (clean.length <= 4) return clean;
+    final visible = clean.substring(clean.length - 4);
+    final masked = '*' * (clean.length - 4);
+    return masked + visible;
+  }
+
   // New section for provider information
   Widget _providerInformation(
     BuildContext context,
@@ -353,6 +380,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     if (provider == null) return SizedBox.shrink();
 
+    print(provider.isActive);
+    print(provider.isRegistered);
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -396,14 +425,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           PersonalInfoCard(
             isLabel: true,
             label: "Aadhaar Number",
-            title: provider.adharNo!,
+            title: maskAadhaar(provider.adharNo),
             iconPath: 'assets/icons/moyo_icon_info_card_phone.svg',
           ),
         if (provider.panNo != null)
           PersonalInfoCard(
             isLabel: true,
             label: "PAN Number",
-            title: provider.panNo!,
+            title: maskPan(provider.panNo),
             iconPath: 'assets/icons/moyo_icon_info_card_phone.svg',
           ),
         if (provider.isBlocked)

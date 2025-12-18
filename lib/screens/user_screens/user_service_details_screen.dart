@@ -41,11 +41,11 @@ class _UserServiceDetailsScreenState extends State<UserServiceDetailsScreen> {
   }
 
   Future<void> _handleBookProvider(
-    BuildContext context,
-    String serviceId,
-    String providerId,
-    String providerName,
-  ) async {
+      BuildContext context,
+      String serviceId,
+      String providerId,
+      String providerName,
+      ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -80,22 +80,33 @@ class _UserServiceDetailsScreenState extends State<UserServiceDetailsScreen> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    // ✅ Use BookProviderProvider for booking API
     final bookProvider = context.read<BookProviderProvider>();
     final success = await bookProvider.bookProvider(
       serviceId: serviceId,
       providerId: providerId,
     );
 
-    if (success && mounted) {
-      Navigator.pop(context, true); // ✅ Pass true to indicate success
-      Navigator.pop(context, true); // ✅ Pass true to indicate success
+    if (!mounted) return;
+    Navigator.pop(context); // Close loading dialog
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Provider booked successfully!')));
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Provider booked successfully!')),
+      );
+
+      // ✅ CHANGE: Pass true to trigger refresh in previous screen
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(bookProvider.bookingError ?? 'Booking failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
+
+
 
   String _calculateAge(String dob) {
     try {

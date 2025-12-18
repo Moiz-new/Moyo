@@ -1,5 +1,3 @@
-// 1. FIRST: Create this separate dialog widget class (add this ABOVE your _ConfirmProviderServiceDetailsScreenState class)
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -10,10 +8,7 @@ import '../../provider_screens/StartWorkProvider.dart';
 class OTPDialog extends StatefulWidget {
   final String serviceId;
 
-  const OTPDialog({
-    Key? key,
-    required this.serviceId,
-  }) : super(key: key);
+  const OTPDialog({Key? key, required this.serviceId}) : super(key: key);
 
   @override
   State<OTPDialog> createState() => _OTPDialogState();
@@ -51,7 +46,7 @@ class _OTPDialogState extends State<OTPDialog> {
             borderRadius: BorderRadius.circular(28.r),
           ),
           child: Container(
-            padding: EdgeInsets.all(24.w),
+            padding: EdgeInsets.all(15.w),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -62,13 +57,10 @@ class _OTPDialogState extends State<OTPDialog> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: 7.h),
                 Text(
                   'Enter the 4-digit OTP to start work',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14.sp, color: Colors.grey[600]),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 32.h),
@@ -76,8 +68,8 @@ class _OTPDialogState extends State<OTPDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(4, (index) {
                     return Container(
-                      width: 60.w,
-                      height: 70.h,
+                      width: 50.w,
+                      height: 60.h,
                       decoration: BoxDecoration(
                         color: const Color(0xFFF5F5F5),
                         borderRadius: BorderRadius.circular(16.r),
@@ -155,9 +147,9 @@ class _OTPDialogState extends State<OTPDialog> {
                       onPressed: startWorkProvider.isProcessing
                           ? null
                           : () {
-                        startWorkProvider.reset();
-                        Navigator.of(context).pop(null);
-                      },
+                              startWorkProvider.reset();
+                              Navigator.of(context).pop(null);
+                            },
                       child: Text(
                         'Cancel',
                         style: TextStyle(
@@ -170,32 +162,32 @@ class _OTPDialogState extends State<OTPDialog> {
                       onPressed: startWorkProvider.isProcessing
                           ? null
                           : () async {
-                        final otp = otpControllers
-                            .map((controller) => controller.text)
-                            .join();
+                              final otp = otpControllers
+                                  .map((controller) => controller.text)
+                                  .join();
 
-                        if (otp.length != 4) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Please enter complete OTP',
-                                style: TextStyle(fontSize: 14.sp),
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                          return;
-                        }
+                              if (otp.length != 4) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Please enter complete OTP',
+                                      style: TextStyle(fontSize: 14.sp),
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
 
-                        final success = await startWorkProvider.startWork(
-                          widget.serviceId,
-                          otp,
-                        );
+                              final success = await startWorkProvider.startWork(
+                                widget.serviceId,
+                                otp,
+                              );
 
-                        if (success && mounted) {
-                          Navigator.of(context).pop(true);
-                        }
-                      },
+                              if (success && mounted) {
+                                Navigator.of(context).pop(true);
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
                         foregroundColor: Colors.white,
@@ -209,20 +201,20 @@ class _OTPDialogState extends State<OTPDialog> {
                       ),
                       child: startWorkProvider.isProcessing
                           ? SizedBox(
-                        height: 20.h,
-                        width: 20.w,
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
+                              height: 20.h,
+                              width: 20.w,
+                              child: const CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : Text(
-                        'Start Work',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                              'Start Work',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ],
                 ),
@@ -234,5 +226,3 @@ class _OTPDialogState extends State<OTPDialog> {
     );
   }
 }
-
-

@@ -1,17 +1,26 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first_flutter/constants/colorConstant/color_constant.dart';
+import 'package:first_flutter/screens/provider_screens/ProviderProfile/EditProviderProfileScreen.dart';
+import 'package:first_flutter/screens/user_screens/Profile/EditProfileScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../baseControllers/APis.dart';
+
+import '../screens/provider_screens/navigation/ProviderChats/ProviderChatScreen.dart';
 import '../screens/user_screens/WidgetProviders/ServiceAPI.dart';
+import '../screens/provider_screens/ServiceArrivalProvider.dart';
+import '../screens/user_screens/navigation/ProviderSOSEmergencyScreen.dart';
 import '../screens/user_screens/navigation/SOSEmergencyScreen.dart';
-import '../screens/user_screens/navigation/UserChats/UserChatScreen.dart';
-import 'CancelServiceDialog.dart';
-import 'RatingDialog.dart';
 
-class UserServiceDetails extends StatelessWidget {
+class RebidProviderConfirmServiceDetails extends StatelessWidget {
   final String? serviceId;
   final String? category;
   final String? subCategory;
@@ -20,28 +29,30 @@ class UserServiceDetails extends StatelessWidget {
   final String? providerPhone;
   final String? dp;
   final String? name;
+  final String? budget;
   final String? rating;
   final String status;
-  final String? providerId;
+  final VoidCallback? onStartWork;
+  final VoidCallback? onSeeWorktime;
+  final VoidCallback? onRating;
 
   final String? durationType;
   final String? duration;
   final String? price;
   final String? address;
   final List<String>? particular;
-  final VoidCallback? onCompleteService;
 
   final String? description;
   final bool isProvider;
+  String? user_id;
 
   final VoidCallback? onAccept;
   final VoidCallback? onReBid;
   final VoidCallback? onCancel;
   final VoidCallback? onTaskComplete;
   final VoidCallback? onRateService;
-  final VoidCallback? onSeeWorktime;
 
-  const UserServiceDetails({
+  RebidProviderConfirmServiceDetails({
     super.key,
     this.serviceId,
     this.category,
@@ -51,6 +62,7 @@ class UserServiceDetails extends StatelessWidget {
     this.providerPhone,
     this.dp,
     this.name,
+    this.budget,
     this.rating,
     this.status = "No status",
     this.durationType,
@@ -65,9 +77,10 @@ class UserServiceDetails extends StatelessWidget {
     this.onCancel,
     this.onTaskComplete,
     this.onRateService,
-    this.providerId,
+    this.onStartWork,
     this.onSeeWorktime,
-    this.onCompleteService,
+    this.user_id,
+    this.onRating,
   });
 
   // Add this method to show note popup
@@ -186,222 +199,380 @@ class UserServiceDetails extends StatelessWidget {
   }
 
   Future<Map<String, String>?> _showReBidDialog(BuildContext context) async {
-    final TextEditingController amountController = TextEditingController();
+    final TextEditingController amountController = TextEditingController(
+      text: price,
+    );
+    double baseAmount = double.tryParse(price!) ?? 0;
+
     final TextEditingController noteController = TextEditingController(
       text: "cash",
     );
+    String? amountError;
 
     return showDialog<Map<String, String>>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Re-Bid Service',
-            style: GoogleFonts.roboto(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1D1B20),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter your new bid amount and note',
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  color: Color(0xFF7A7A7A),
-                ),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            void validateAmount() {
+              if (amountController.text.isEmpty) {
+                setState(() => amountError = null);
+                return;
+              }
+
+              double entered = double.tryParse(amountController.text) ?? 0;
+              double minAllowed = baseAmount * 0.70;
+              double maxAllowed = baseAmount * 2.00;
+
+              setState(() {
+                if (entered < minAllowed) {
+                  amountError =
+                      "Amount must be at least ₹${minAllowed.toStringAsFixed(2)}";
+                } else if (entered > maxAllowed) {
+                  amountError =
+                      "Amount must not exceed ₹${maxAllowed.toStringAsFixed(2)}";
+                } else {
+                  amountError = null;
+                }
+              });
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.r),
               ),
-              SizedBox(height: 16),
-              // Amount TextField
-              Text(
-                'Amount *',
+              title: Text(
+                'Re-Bid Service',
                 style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xFF1D1B20),
                 ),
               ),
-              SizedBox(height: 8),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: 'Enter amount',
-                  prefixText: '₹ ',
-                  hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: ColorConstant.moyoOrange,
-                      width: 2,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Enter your new bid amount and note',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14.sp,
+                      color: Color(0xFF7A7A7A),
                     ),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.all(12),
-                ),
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  color: Color(0xFF1D1B20),
-                ),
-              ),
-              SizedBox(height: 16),
-              // Note TextField
-              Text(
-                'Note',
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1D1B20),
-                ),
-              ),
-              SizedBox(height: 8),
-              TextField(
-                controller: noteController,
-                maxLines: 3,
-                maxLength: 200,
-                decoration: InputDecoration(
-                  hintText: 'Enter note...',
-                  hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                      color: ColorConstant.moyoOrange,
-                      width: 2,
+                  SizedBox(height: 16.h),
+                  Text(
+                    'Amount *',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1D1B20),
                     ),
                   ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.all(12),
-                ),
-                style: GoogleFonts.roboto(
-                  fontSize: 14,
-                  color: Color(0xFF1D1B20),
-                ),
+                  SizedBox(height: 8.h),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => validateAmount(),
+                    decoration: InputDecoration(
+                      hintText: 'Enter amount',
+                      prefixText: '₹ ',
+                      errorText: amountError,
+                      hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(
+                          color: ColorConstant.moyoOrange,
+                          width: 2.w,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.all(12.w),
+                    ),
+                    style: GoogleFonts.roboto(
+                      fontSize: 14.sp,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  Text(
+                    'Note',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  TextField(
+                    controller: noteController,
+                    maxLines: 3,
+                    maxLength: 200,
+                    decoration: InputDecoration(
+                      hintText: 'Enter note...',
+                      hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide(
+                          color: ColorConstant.moyoOrange,
+                          width: 2.w,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.all(12.w),
+                    ),
+                    style: GoogleFonts.roboto(
+                      fontSize: 14.sp,
+                      color: Color(0xFF1D1B20),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(null);
-              },
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.roboto(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF7A7A7A),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(null);
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20.w,
+                      vertical: 12.h,
+                    ),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.roboto(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF7A7A7A),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final amount = amountController.text.trim();
-                final note = noteController.text.trim();
+                ElevatedButton(
+                  onPressed: () {
+                    final amount = amountController.text.trim();
+                    final note = noteController.text.trim();
 
-                if (amount.isEmpty) {
-                  _showErrorSnackbar(context, 'Please enter amount');
-                  return;
-                }
+                    if (amount.isEmpty) {
+                      _showErrorSnackbar(context, 'Please enter amount');
+                      return;
+                    }
 
-                // Validate amount is numeric
-                if (double.tryParse(amount) == null) {
-                  _showErrorSnackbar(context, 'Please enter valid amount');
-                  return;
-                }
+                    double entered = double.tryParse(amount) ?? 0;
+                    double minAllowed = baseAmount * 0.70;
+                    double maxAllowed = baseAmount * 2.00;
 
-                if (note.isEmpty) {
-                  _showErrorSnackbar(context, 'Please enter a note');
-                  return;
-                }
+                    if (entered < minAllowed) {
+                      _showErrorSnackbar(
+                        context,
+                        "Amount must be at least ₹${minAllowed.toStringAsFixed(2)}",
+                      );
+                      return;
+                    } else if (entered > maxAllowed) {
+                      _showErrorSnackbar(
+                        context,
+                        "Amount must not exceed ₹${maxAllowed.toStringAsFixed(2)}",
+                      );
+                      return;
+                    }
 
-                Navigator.of(context).pop({'amount': amount, 'note': note});
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFCD3232),
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                    if (note.isEmpty) {
+                      _showErrorSnackbar(context, 'Please enter a note');
+                      return;
+                    }
+
+                    Navigator.of(context).pop({'amount': amount, 'note': note});
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFCD3232),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 24.w,
+                      vertical: 12.h,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                  child: Text(
+                    'Submit Re-Bid',
+                    style: GoogleFonts.roboto(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-              ),
-              child: Text(
-                'Submit Re-Bid',
-                style: GoogleFonts.roboto(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  Widget _completeService(BuildContext context) {
-    return InkWell(
-      onTap: onCompleteService,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-        decoration: BoxDecoration(
-          color: ColorConstant.moyoGreen,
-          border: Border.all(color: ColorConstant.moyoGreen, width: 1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          spacing: 8,
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            Text(
-              "Complete Service",
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.roboto(
-                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Color(0xFFFFFFFF),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<String?> _getAuthToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      print('Error getting auth token: $e');
+      return null;
+    }
   }
 
-  // Add this method to handle Accept button click
   Future<void> _handleAcceptService(BuildContext context) async {
+    try {
+      final token = await _getAuthToken();
+
+      if (token == null || token.isEmpty) {
+        throw Exception('Authentication token not found. Please login again.');
+      }
+
+      final url = Uri.parse('$base_url/api/auth/profile');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print("object");
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        bool isRegister = data['profile']['provider']['isregistered'] ?? false;
+        bool isUserRegister = data['profile']['isregister'] ?? false;
+
+        if (isRegister == false || isUserRegister == false) {
+          // Show profile incomplete popup
+          final shouldNavigate = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+                title: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: ColorConstant.moyoOrange,
+                      size: 28.sp,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Profile Incomplete',
+                      style: GoogleFonts.roboto(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1D1B20),
+                      ),
+                    ),
+                  ],
+                ),
+                content: Text(
+                  'Please complete your profile to accept services. You will be redirected to the profile edit screen.',
+                  style: GoogleFonts.roboto(
+                    fontSize: 14.sp,
+                    color: Color(0xFF7A7A7A),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(false);
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 12.h,
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.roboto(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF7A7A7A),
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(true);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ColorConstant.moyoOrange,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 24.w,
+                        vertical: 12.h,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    child: Text(
+                      'Complete Profile',
+                      style: GoogleFonts.roboto(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+
+          // If user clicked "Complete Profile", navigate to edit profile screen
+          if (shouldNavigate == true) {
+            // Check which profile is incomplete and navigate accordingly
+            if (isRegister == false) {
+              // Provider profile is incomplete
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditProviderProfileScreen(),
+                ),
+              );
+            } else if (isUserRegister == false) {
+              // User profile is incomplete
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => EditProfileScreen()),
+              );
+            }
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      _showErrorSnackbar(context, 'Failed to verify profile status');
+      return;
+    }
+
     // Validate required fields
     if (serviceId == null || serviceId!.isEmpty) {
       _showErrorSnackbar(context, 'Service ID is missing');
@@ -507,178 +678,140 @@ class UserServiceDetails extends StatelessWidget {
     }
   }
 
-  void _showSuccessSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: ColorConstant.moyoGreen,
-        duration: Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showErrorSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Color(0xFFC4242E),
-        duration: Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final statusLower = status.toLowerCase();
-    print(statusLower);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-      child: Container(
-        padding: EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          spacing: 10,
-          children: [
-            _catSubCatDate(context, category, subCategory, date),
-
-            // Hide SOS section for completed and cancelled
-            if (!(statusLower == "completed" || statusLower == "cancelled"))
-              _sosPinTimeLeftCallMessage(context, pin, providerPhone),
-
-            _dpNameStatus(context, _currentStatusChip(context, status)),
-
-            _durationTypeDurationAndPrice(
-              context,
-              durationType,
-              duration,
-              price,
-            ),
-
-            _userAddress(context, address),
-
-            if (particular != null) _particular(context, particular!),
-
-            _description(context, description),
-
-            // Accept/ReBid buttons - show for 'open' and 'pending' if provider
-            if ((statusLower == "open" || statusLower == "pending") &&
-                isProvider)
-              _acceptReBid(context),
-
-            // Cancel button - show for 'assigned' status (user side)
-            if (statusLower == "assigned" || statusLower == "arrived")
-              _cancelTheService(context),
-
-            // Task complete - show for 'started' or 'in_progress' status
-            if (statusLower == "started") _taskComplete(context),
-
-            // Rate service - show for 'completed' status
-            if (statusLower == "completed") _rateService(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Update _acceptReBid to use the new API handler
-  Widget _acceptReBid(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        spacing: 10,
-        children: [
-          Expanded(
-            child: InkWell(
-              onTap: () => _handleAcceptService(context),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: ColorConstant.moyoGreen,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  spacing: 8,
-                  children: [
-                    Text(
-                      "Accept",
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.roboto(
-                        textStyle: Theme.of(context).textTheme.labelLarge
-                            ?.copyWith(
-                              color: Color(0xFFFFFFFF),
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: InkWell(
-              onTap: () => _handleReBidService(context),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                decoration: BoxDecoration(
-                  color: Color(0xFFCD3232),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  spacing: 8,
-                  children: [
-                    Text(
-                      "Re Bid",
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.roboto(
-                        textStyle: Theme.of(context).textTheme.labelLarge
-                            ?.copyWith(
-                              color: Color(0xFFFFFFFF),
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _handleReBidService(BuildContext context) async {
+    // First check profile completion status
+    try {
+      final token = await _getAuthToken();
+
+      if (token == null || token.isEmpty) {
+        throw Exception('Authentication token not found. Please login again.');
+      }
+
+      final url = Uri.parse('$base_url/api/auth/profile');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        bool isRegister = data['profile']['provider']['isregistered'] ?? false;
+        bool isUserRegister = data['profile']['isregister'] ?? false;
+
+        if (isRegister == false || isUserRegister == false) {
+          // Show profile incomplete popup
+          final shouldNavigate = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+                title: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: ColorConstant.moyoOrange,
+                      size: 28.sp,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Profile Incomplete',
+                      style: GoogleFonts.roboto(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1D1B20),
+                      ),
+                    ),
+                  ],
+                ),
+                content: Text(
+                  'Please complete your profile to re-bid on services. You will be redirected to the profile edit screen.',
+                  style: GoogleFonts.roboto(
+                    fontSize: 14.sp,
+                    color: Color(0xFF7A7A7A),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(false);
+                    },
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 12.h,
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.roboto(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF7A7A7A),
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(true);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ColorConstant.moyoOrange,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 24.w,
+                        vertical: 12.h,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    child: Text(
+                      'Complete Profile',
+                      style: GoogleFonts.roboto(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+
+          // If user clicked "Complete Profile", navigate to edit profile screen
+          if (shouldNavigate == true) {
+            // Check which profile is incomplete and navigate accordingly
+            if (isRegister == false) {
+              // Provider profile is incomplete
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditProviderProfileScreen(),
+                ),
+              );
+            } else if (isUserRegister == false) {
+              // User profile is incomplete
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => EditProfileScreen()),
+              );
+            }
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      _showErrorSnackbar(context, 'Failed to verify profile status');
+      return;
+    }
+
     // Validate required fields
     if (serviceId == null || serviceId!.isEmpty) {
       _showErrorSnackbar(context, 'Service ID is missing');
@@ -703,10 +836,10 @@ class UserServiceDetails extends StatelessWidget {
         barrierDismissible: false,
         builder: (context) => Center(
           child: Container(
-            padding: EdgeInsets.all(20),
+            padding: EdgeInsets.all(20.w),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -716,7 +849,7 @@ class UserServiceDetails extends StatelessWidget {
                 Text(
                   'Submitting re-bid...',
                   style: GoogleFonts.roboto(
-                    fontSize: 16.h,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -782,8 +915,183 @@ class UserServiceDetails extends StatelessWidget {
     }
   }
 
-  // Keep all other existing methods unchanged...
-  // (Copy all the other methods from your original code)
+  void _showSuccessSnackbar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: ColorConstant.moyoGreen,
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showErrorSnackbar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Color(0xFFC4242E),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print("Current status: $status");
+    print("isprovider: $isProvider");
+    print("serviceId: $serviceId");
+
+    final statusLower = status.toLowerCase();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      child: Container(
+        padding: EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          spacing: 10,
+          children: [
+            _catSubCatDate(context, category, subCategory, date),
+
+            // Hide SOS section for completed and cancelled
+            if (!(statusLower == "completed" || statusLower == "cancelled"))
+              _sosPinTimeLeftCallMessage(context, pin, providerPhone),
+
+            _dpNameStatus(context, _currentStatusChip(context, status)),
+
+            _durationTypeDurationAndPrice(
+              context,
+              durationType,
+              duration,
+              price,
+            ),
+
+            _userAddress(context, address),
+
+            if (particular != null) _particular(context, particular!),
+
+            _description(context, description),
+
+            Consumer<ServiceArrivalProvider>(
+              builder: (context, arrivalProvider, child) {
+                return _buildCenterContent(context, arrivalProvider);
+              },
+            ),
+
+            // Task complete - show for 'started' or 'in_progress' status
+            if (statusLower == "started" || statusLower == "in_progress")
+              _taskComplete(context),
+
+            // Rate service - show for 'completed' status
+            //if (statusLower == "completed") _rateService(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Update _acceptReBid to use the new API handler
+  Widget _acceptReBid(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        spacing: 10,
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                print("Accept button tapped");
+                _handleAcceptService(context);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: ColorConstant.moyoGreen,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  spacing: 8,
+                  children: [
+                    Text(
+                      "Accept",
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.roboto(
+                        textStyle: Theme.of(context).textTheme.labelLarge
+                            ?.copyWith(
+                              color: Color(0xFFFFFFFF),
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                print("ReBid button tapped");
+                _handleReBidService(context);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Color(0xFFCD3232),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  spacing: 8,
+                  children: [
+                    Text(
+                      "Re Bid",
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.roboto(
+                        textStyle: Theme.of(context).textTheme.labelLarge
+                            ?.copyWith(
+                              color: Color(0xFFFFFFFF),
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _currentStatusChip(BuildContext context, String? status3) {
     final statusLower = status3?.toLowerCase() ?? '';
@@ -952,136 +1260,135 @@ class UserServiceDetails extends StatelessWidget {
     );
   }
 
-  // Replace the _sosPinTimeLeftCallMessage method with this updated version
-
   Widget _sosPinTimeLeftCallMessage(
     BuildContext context,
     String? pin,
     String? providerPhone,
   ) {
-    final statusLower = status.toLowerCase();
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // SOS Button
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      SOSEmergencyScreen(serviceId: serviceId),
-                ),
-              );
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: Color(0xFFFF0000),
-                borderRadius: BorderRadius.all(Radius.circular(50)),
-              ),
-              child: Text(
-                "SOS",
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(
-                  textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
+    return Consumer<ServiceArrivalProvider>(
+      builder: (context, arrivalProvider, child) {
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // SOS Button
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ProviderSOSEmergencyScreen(serviceId: serviceId),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFF0000),
+                    borderRadius: BorderRadius.all(Radius.circular(50)),
                   ),
-                  color: Color(0xFFFFFFFF),
+                  child: Text(
+                    "SOS",
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.roboto(
+                      textStyle: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w500),
+                      color: Color(0xFFFFFFFF),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
 
-          // Center content - PIN or Timer based on status
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: _buildCenterContent(context, pin),
-            ),
-          ),
-
-          // Call and Message buttons - Hide for pending status
-          if (statusLower != "open")
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              spacing: 16,
-              children: [
-                // Call Button
-                InkWell(
-                  onTap: () {
-                    if (providerPhone != null && providerPhone.isNotEmpty) {
-                      // Add your call functionality here
-                      // Example: launch('tel:$providerPhone');
-                      print('Calling: $providerPhone');
-                    } else {
-                      _showErrorSnackbar(context, 'Phone number not available');
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(50),
-                  child: SvgPicture.asset("assets/icons/moyo_call_action.svg"),
+              if (status == "arrived" || status == "in_progress")
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: status == "in_progress"
+                        ? _workTime(context)
+                        : _startWork(context),
+                  ),
                 ),
 
-                // Message/Chat Button
-                InkWell(
-                  onTap: () {
-                    // Navigate to chat screen
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UserChatScreen(
-                          userName: name ?? "Provider",
-                          userImage: dp,
-                          serviceId: serviceId,
-                          providerId: providerId,
-                          isOnline: true,
-                          userPhone: providerPhone,
+              // Right Section - Call and Message
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                spacing: 16,
+                children: [
+                  SvgPicture.asset("assets/icons/moyo_call_action.svg"),
+                  InkWell(
+                    onTap: () {
+                      // Navigate to chat screen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProviderChatScreen(
+                            userName: name ?? "Provider",
+                            userImage: dp,
+                            serviceId: serviceId,
+                            providerId: user_id,
+                            isOnline: true,
+                            userPhone: providerPhone,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(50),
-                  child: SvgPicture.asset(
-                    "assets/icons/moyo_message_action.svg",
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(50),
+                    child: SvgPicture.asset(
+                      "assets/icons/moyo_message_action.svg",
+                    ),
                   ),
-                ),
-              ],
-            ),
-        ],
-      ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildCenterContent(BuildContext context, String? pin) {
+  Widget _buildCenterContent(
+    BuildContext context,
+    ServiceArrivalProvider arrivalProvider,
+  ) {
     final statusLower = status.toLowerCase();
 
-    // Show PIN for assigned, arrived statuses
-    if (statusLower == "assigned" ||
-        statusLower == "arrived" ||
-        statusLower == "in_progress" ||
-        statusLower == "confirmed") {
-      return Column(
-        children: [
-          Text(
-            "PIN - ${pin ?? "No Pin"}",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              color: Color(0xFF000000),
-            ),
+    // Show timer if arrived and timer is active
+    if (statusLower == "arrived" &&
+        isProvider &&
+        arrivalProvider.hasArrived &&
+        arrivalProvider.isTimerActive) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Color(0xFFE3F2FD),
+            borderRadius: BorderRadius.all(Radius.circular(50)),
+            border: Border.all(color: Color(0xFF1976D2), width: 1.5),
           ),
-          if (statusLower == "in_progress") _completeService(context),
-        ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 8,
+            children: [
+              Icon(Icons.timer, color: Color(0xFF1976D2), size: 18),
+              Text(
+                arrivalProvider.formattedTime,
+                style: GoogleFonts.roboto(
+                  textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                  color: Color(0xFF1976D2),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -1095,6 +1402,74 @@ class UserServiceDetails extends StatelessWidget {
     String? duration,
   }) {
     return "03 : 29";
+  }
+
+  Widget _startWork(BuildContext context) {
+    return InkWell(
+      onTap: onStartWork,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 3, vertical: 6),
+        decoration: BoxDecoration(
+          color: ColorConstant.moyoGreen,
+          border: Border.all(color: ColorConstant.moyoGreen, width: 1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          spacing: 8,
+          children: [
+            Icon(Icons.work, color: Colors.white, size: 20),
+            Text(
+              "Start Work",
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.roboto(
+                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Color(0xFFFFFFFF),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _workTime(BuildContext context) {
+    return InkWell(
+      onTap: onSeeWorktime,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+        decoration: BoxDecoration(
+          color: ColorConstant.moyoOrange,
+          border: Border.all(color: ColorConstant.moyoGreen, width: 1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          spacing: 8,
+          children: [
+            Icon(Icons.timelapse, color: Colors.white, size: 20),
+            Text(
+              "Work time",
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.roboto(
+                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Color(0xFFFFFFFF),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _dpNameStatus(context, Widget child) {
@@ -1334,55 +1709,11 @@ class UserServiceDetails extends StatelessWidget {
     );
   }
 
-  Future<void> _handleCancelService(BuildContext context) async {
-    // Validate required fields with null checks
-    if (serviceId == null || serviceId!.isEmpty) {
-      _showErrorSnackbar(context, 'Service ID is missing');
-      return;
-    }
-
-    try {
-      // Show cancellation bottom sheet
-      final result = await showModalBottomSheet<bool>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        isDismissible: false,
-        enableDrag: false,
-        builder: (BuildContext context) {
-          return CancelServiceBottomSheet(serviceId: serviceId!);
-        },
-      );
-
-      // If cancellation was successful
-      if (result == true && context.mounted) {
-        _showSuccessSnackbar(context, 'Service cancelled successfully');
-
-        // Add delay to show snackbar, then pop
-        await Future.delayed(Duration(milliseconds: 500));
-
-        // Pop the screen to go back
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
-
-        // Call the original onCancel callback if provided
-        if (onCancel != null) {
-          onCancel!();
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        _showErrorSnackbar(context, e.toString().replaceAll('Exception: ', ''));
-      }
-    }
-  }
-
   Widget _cancelTheService(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: InkWell(
-        onTap: () => _handleCancelService(context),
+        onTap: onCancel,
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1454,63 +1785,11 @@ class UserServiceDetails extends StatelessWidget {
     );
   }
 
-  Future<void> _handleRateService(BuildContext context) async {
-    // Validate required data with null checks
-    if (serviceId == null || serviceId!.isEmpty) {
-      _showErrorSnackbar(context, 'Service ID is missing');
-      return;
-    }
-
-    // Use the providerId from the widget's field
-    if (providerId == null || providerId!.isEmpty) {
-      _showErrorSnackbar(context, 'Provider information is missing');
-      return;
-    }
-
-    try {
-      // Show rating dialog
-      final result = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return RatingDialog(
-            serviceId: serviceId!,
-            providerId: providerId!,
-            providerName: name,
-          );
-        },
-      );
-
-      // If rating was submitted successfully
-      if (result == true && context.mounted) {
-        _showSuccessSnackbar(context, 'Thank you for rating the service!');
-
-        // Add delay to show snackbar, then pop
-        await Future.delayed(Duration(milliseconds: 500));
-
-        // Pop the screen to go back
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
-
-        // Call the original onRateService callback if provided
-        if (onRateService != null) {
-          onRateService!();
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        _showErrorSnackbar(context, e.toString().replaceAll('Exception: ', ''));
-      }
-    }
-  }
-
-  // Update the _rateService widget to use the new handler
   Widget _rateService(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: InkWell(
-        onTap: () => _handleRateService(context),
+        onTap: onRateService,
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),

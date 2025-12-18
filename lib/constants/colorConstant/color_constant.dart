@@ -11,6 +11,7 @@ class ColorConstant {
   static const Color moyoOrange = Color(0xFFFD8405);
   static const Color moyoOrangeFade = Color(0xFFFEE4D3);
   static const Color moyoScaffoldGradient = Color(0xFFFEC991);
+  static const Color moyoScaffoldGradientLight = Color(0xFFFBDAB7);
   static const Color moyoGreen = Color(0xFF15A200);
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);

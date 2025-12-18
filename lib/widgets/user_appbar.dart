@@ -501,14 +501,14 @@ class _UserAppbarState extends State<UserAppbar> {
                           ),
                         ),
                         constraints: BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
+                          minWidth: 8,
+                          minHeight: 8,
                         ),
                         child: Center(
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
                             style: GoogleFonts.roboto(
-                              fontSize: 10,
+                              fontSize: 7,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),

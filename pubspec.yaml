@@ -4,7 +4,7 @@ description: "A new Flutter project."
 publish_to: 'none'
 
 
-version: 7.0.0+7
+version: 9.0.0+9
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
@@ -48,6 +48,7 @@ dependencies:
   app_settings: ^7.0.0
   flutter_riverpod: ^3.0.3
   sms_autofill: ^2.3.0
+  razorpay_flutter: ^1.4.0
 
 
 dev_dependencies:
@@ -60,7 +61,7 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/icons/app_icon.png.png"
+  image_path: "assets/icons/app_icon.png"
 
 
 flutter:

@@ -37,7 +37,6 @@ class NotificationService {
   static Future<void> initializeNotifications() async {
     print("=== 🔔 Initializing Notifications ===");
 
-    // 🔥 IMPORTANT: Background handler ko register karo SABSE PEHLE
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
     // 1. Setup Local Notifications
@@ -181,7 +180,6 @@ class NotificationService {
       showWhen: true,
       playSound: true,
       sound: RawResourceAndroidNotificationSound(_customSoundFileName),
-      // 🔊 Custom sound
       enableVibration: true,
       enableLights: true,
       icon: '@mipmap/ic_launcher',
@@ -212,11 +210,9 @@ class NotificationService {
     print("✅ Notification shown with custom sound");
   }
 
-  // 🔥 STATIC METHOD: Background handler ke liye (Plugin initialize karne ke baad)
   static Future<void> showLocalNotificationStatic(RemoteMessage message) async {
     print("=== 📲 [BACKGROUND] Showing notification with custom sound ===");
 
-    // Plugin ko initialize karo agar background se call ho raha hai
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );

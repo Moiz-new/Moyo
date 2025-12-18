@@ -1001,8 +1001,8 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
               _acceptReBid(context),
 
             // Cancel button - show for 'assigned' status
-            if (statusLower == "assigned" || statusLower == "arrived")
-              _cancelTheService(context),
+         /*   if (statusLower == "assigned" || statusLower == "arrived")
+              _cancelTheService(context),*/
 
             // Task complete - show for 'started' or 'in_progress' status
             if (statusLower == "started" || statusLower == "in_progress")
@@ -1225,6 +1225,7 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
       ),
     );
   }
+
 
   Widget _catSubCatDate(
     BuildContext context,

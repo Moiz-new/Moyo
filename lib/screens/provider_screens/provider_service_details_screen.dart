@@ -240,6 +240,7 @@ class _ProviderServiceDetailsScreenState
 
   @override
   Widget build(BuildContext context) {
+    print(_errorMessage);
     return Scaffold(
       backgroundColor: ColorConstant.moyoScaffoldGradient,
       appBar: UserOnlyTitleAppbar(title: "Service Details"),

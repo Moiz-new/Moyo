@@ -1,7 +1,9 @@
+import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/ServiceProvider.dart';
 import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/user_Pending_service.dart';
 import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/user_completed_service.dart';
 import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/user_ongoing_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../widgets/user_tab_bar.dart';
 
@@ -13,56 +15,37 @@ class UserService extends StatefulWidget {
 }
 
 class _UserServiceState extends State<UserService>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, RouteAware {
   late TabController _tabController;
-  int _currentTabIndex = 0;
-
-  // Keys for each tab to force refresh
-  List<GlobalKey> _tabKeys = [
-    GlobalKey(),
-    GlobalKey(),
-    GlobalKey(),
-  ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(_handleTabChange);
-    WidgetsBinding.instance.addObserver(this);
+    // Refresh data when screen is first loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshCurrentTab();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This ensures refresh when navigating back to this screen
+    _refreshCurrentTab();
+  }
+
+  Future<void> _refreshCurrentTab() async {
+    if (mounted) {
+      final provider = context.read<ServiceProvider>();
+      await provider.refreshServices();
+    }
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
-    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Refresh when app comes to foreground
-    if (state == AppLifecycleState.resumed) {
-      _refreshCurrentTab();
-    }
-  }
-
-  void _handleTabChange() {
-    // Check if tab index has changed (not just animation)
-    if (!_tabController.indexIsChanging && _tabController.index != _currentTabIndex) {
-      setState(() {
-        _currentTabIndex = _tabController.index;
-        // Generate new key to force rebuild
-        _tabKeys[_currentTabIndex] = GlobalKey();
-      });
-    }
-  }
-
-  void _refreshCurrentTab() {
-    setState(() {
-      _tabKeys[_currentTabIndex] = GlobalKey();
-    });
   }
 
   @override
@@ -78,10 +61,10 @@ class _UserServiceState extends State<UserService>
   Widget _tabBarView() {
     return TabBarView(
       controller: _tabController,
-      children: [
-        UserPendingService(key: _tabKeys[0]),
-        UserOngoingService(key: _tabKeys[1]),
-        UserCompletedService(key: _tabKeys[2]),
+      children: const [
+        UserPendingService(),
+        UserOngoingService(),
+        UserCompletedService(),
       ],
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,18 +21,24 @@ class ServiceArrivalProvider extends ChangeNotifier {
   bool _isProcessingArrival = false;
   String? _errorMessage;
 
+  // Auto-refresh timers
+  Timer? _countdownTimer;
+  Timer? _statusCheckTimer;
+  Timer? _natsListenerTimer;
+
+  // Status tracking
+  String? _currentStatus;
+  Map<String, dynamic>? _cachedServiceData;
+
   // Getters
   int get remainingSeconds => _remainingSeconds;
-
   bool get isTimerActive => _isTimerActive;
-
   bool get hasArrived => _hasArrived;
-
   bool get canStartWork => _canStartWork;
-
   bool get isProcessingArrival => _isProcessingArrival;
-
   String? get errorMessage => _errorMessage;
+  String? get currentStatus => _currentStatus;
+  Map<String, dynamic>? get cachedServiceData => _cachedServiceData;
 
   String get formattedTime {
     final minutes = _remainingSeconds ~/ 60;
@@ -57,22 +64,21 @@ class ServiceArrivalProvider extends ChangeNotifier {
           _arrivalTime = DateTime.parse(arrivalTimeStr);
           _hasArrived = true;
 
-          // Calculate remaining time
           final elapsed = DateTime.now().difference(_arrivalTime!).inSeconds;
-          _remainingSeconds = 600 - elapsed; // 10 minutes = 600 seconds
+          _remainingSeconds = 600 - elapsed;
 
           if (_remainingSeconds <= 0) {
-            // Timer completed
             _remainingSeconds = 0;
             _isTimerActive = false;
             _canStartWork = true;
           } else {
-            // Timer still running
             _isTimerActive = true;
             _canStartWork = false;
             _startTimerCountdown();
           }
 
+          // Start auto-refresh listeners
+          _startAutoRefresh(serviceId);
           notifyListeners();
         }
       }
@@ -94,7 +100,6 @@ class ServiceArrivalProvider extends ChangeNotifier {
         _arrivalTime = DateTime.parse(arrivalTimeStr);
         _hasArrived = true;
 
-        // Calculate remaining time
         final elapsed = DateTime.now().difference(_arrivalTime!).inSeconds;
         _remainingSeconds = 600 - elapsed;
 
@@ -108,14 +113,171 @@ class ServiceArrivalProvider extends ChangeNotifier {
           _startTimerCountdown();
         }
 
+        // Start auto-refresh listeners
+        _startAutoRefresh(serviceId);
         notifyListeners();
       } else {
-        // Reset state for new service
         _resetTimerState();
+        // Still start status check for new services
+        _startAutoRefresh(serviceId);
       }
     } catch (e) {
       print('Error loading timer state: $e');
       _resetTimerState();
+    }
+  }
+
+  // Start auto-refresh mechanism
+  void _startAutoRefresh(String serviceId) {
+    // Cancel existing timers
+    _stopAutoRefresh();
+
+    // 1. Poll backend every 15 seconds for status changes
+    _statusCheckTimer = Timer.periodic(
+      const Duration(seconds: 15),
+          (timer) => _checkServiceStatus(serviceId),
+    );
+
+    // 2. Listen to NATS for real-time updates (more efficient)
+    _setupNatsListener(serviceId);
+  }
+
+  // Stop all auto-refresh timers
+  void _stopAutoRefresh() {
+    _statusCheckTimer?.cancel();
+    _statusCheckTimer = null;
+    _natsListenerTimer?.cancel();
+    _natsListenerTimer = null;
+  }
+
+  // Check service status via API
+  Future<void> _checkServiceStatus(String serviceId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final providerToken = prefs.getString('provider_auth_token');
+
+      if (providerToken == null) return;
+
+      String? providerId;
+      try {
+        final parts = providerToken.split('.');
+        if (parts.length == 3) {
+          final payload = json.decode(
+            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+          );
+          providerId = payload['provider_id']?.toString() ??
+              payload['id']?.toString() ??
+              payload['sub']?.toString();
+        } else {
+          providerId = providerToken;
+        }
+      } catch (e) {
+        providerId = providerToken;
+      }
+
+      if (providerId == null) return;
+
+      final requestData = jsonEncode({
+        'service_id': serviceId,
+        'provider_id': providerId,
+      });
+
+      final response = await _natsService.request(
+        'service.info.details',
+        requestData,
+        timeout: const Duration(seconds: 5),
+      );
+
+      if (response != null) {
+        final data = jsonDecode(response);
+        _updateServiceData(data);
+      }
+    } catch (e) {
+      print('Error checking service status: $e');
+    }
+  }
+
+  // Setup NATS listener for real-time updates
+  void _setupNatsListener(String serviceId) {
+    // Poll NATS subscription every 5 seconds
+    _natsListenerTimer = Timer.periodic(
+      const Duration(seconds: 5),
+          (timer) => _listenForNatsUpdates(serviceId),
+    );
+  }
+
+  // Listen for NATS updates
+  Future<void> _listenForNatsUpdates(String serviceId) async {
+    try {
+      if (!_natsService.isConnected) {
+        await _natsService.connect(
+          url: 'nats://api.moyointernational.com:4222',
+        );
+      }
+
+      // Subscribe to service-specific updates
+      final requestData = jsonEncode({'service_id': serviceId});
+
+      final response = await _natsService.request(
+        'service.updates.$serviceId',
+        requestData,
+        timeout: const Duration(seconds: 3),
+      );
+
+      if (response != null) {
+        final data = jsonDecode(response);
+        _updateServiceData(data);
+      }
+    } catch (e) {
+      // Silent fail for NATS updates (fallback to polling)
+      print('NATS update check: $e');
+    }
+  }
+
+  // Update service data and notify listeners
+  void _updateServiceData(Map<String, dynamic> newData) {
+    bool hasChanges = false;
+
+    // Check status change
+    final newStatus = newData['status']?.toString().toLowerCase();
+    if (newStatus != null && newStatus != _currentStatus) {
+      _currentStatus = newStatus;
+      hasChanges = true;
+
+      // Handle status-specific logic
+      if (newStatus == 'in_progress' || newStatus == 'started') {
+        // Work has started - clear arrival timer
+        if (_hasArrived && _currentServiceId != null) {
+          clearTimerState(_currentServiceId!);
+        }
+      } else if (newStatus == 'completed' || newStatus == 'cancelled') {
+        // Service ended - stop all timers
+        _stopAutoRefresh();
+        _resetTimerState();
+      }
+    }
+
+    // Check for arrival confirmation from backend
+    final arrivedStatus = newData['provider_arrived'];
+    if (arrivedStatus == true && !_hasArrived) {
+      _hasArrived = true;
+      _isTimerActive = true;
+      _canStartWork = false;
+      _remainingSeconds = 600;
+      _startTimerCountdown();
+      hasChanges = true;
+    }
+
+    // Cache service data
+    if (_cachedServiceData == null ||
+        jsonEncode(_cachedServiceData) != jsonEncode(newData)) {
+      _cachedServiceData = newData;
+      hasChanges = true;
+    }
+
+    // Only notify if there are actual changes
+    if (hasChanges) {
+      notifyListeners();
     }
   }
 
@@ -148,15 +310,14 @@ class ServiceArrivalProvider extends ChangeNotifier {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Save arrival time and state
         _currentServiceId = serviceId;
         _arrivalTime = DateTime.now();
         _hasArrived = true;
         _isTimerActive = true;
         _canStartWork = false;
-        _remainingSeconds = 600; // Reset to 10 minutes
+        _remainingSeconds = 600;
+        _currentStatus = 'arrived';
 
-        // Persist state
         await prefs.setString('timer_service_id', serviceId);
         await prefs.setString(
           'arrival_time_$serviceId',
@@ -164,8 +325,10 @@ class ServiceArrivalProvider extends ChangeNotifier {
         );
         await prefs.setBool('has_arrived_$serviceId', true);
 
-        // Start countdown
         _startTimerCountdown();
+
+        // Start auto-refresh after arrival
+        _startAutoRefresh(serviceId);
 
         _isProcessingArrival = false;
         notifyListeners();
@@ -187,8 +350,10 @@ class ServiceArrivalProvider extends ChangeNotifier {
 
   // Start timer countdown
   void _startTimerCountdown() {
-    // Cancel any existing timer
-    Future.delayed(const Duration(seconds: 1), () {
+    // Cancel existing countdown timer
+    _countdownTimer?.cancel();
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isTimerActive && _remainingSeconds > 0) {
         _remainingSeconds--;
 
@@ -196,18 +361,17 @@ class ServiceArrivalProvider extends ChangeNotifier {
           _remainingSeconds = 0;
           _isTimerActive = false;
           _canStartWork = true;
+          _countdownTimer?.cancel();
         }
 
         notifyListeners();
-
-        if (_isTimerActive) {
-          _startTimerCountdown();
-        }
+      } else {
+        _countdownTimer?.cancel();
       }
     });
   }
 
-  // Clear timer state (call when work starts or service completes)
+  // Clear timer state
   Future<void> clearTimerState(String serviceId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -216,6 +380,7 @@ class ServiceArrivalProvider extends ChangeNotifier {
 
       if (_currentServiceId == serviceId) {
         await prefs.remove('timer_service_id');
+        _stopAutoRefresh();
         _resetTimerState();
       }
     } catch (e) {
@@ -231,7 +396,15 @@ class ServiceArrivalProvider extends ChangeNotifier {
     _canStartWork = false;
     _arrivalTime = null;
     _currentServiceId = null;
+    _currentStatus = null;
+    _cachedServiceData = null;
+    _countdownTimer?.cancel();
     notifyListeners();
+  }
+
+  // Force refresh service data
+  Future<void> forceRefresh(String serviceId) async {
+    await _checkServiceStatus(serviceId);
   }
 
   // Check if timer is active for a specific service
@@ -246,6 +419,8 @@ class ServiceArrivalProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
+    _stopAutoRefresh();
     super.dispose();
   }
 }

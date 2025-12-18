@@ -1,4 +1,4 @@
-// otp_screen.dart - FIXED ALIGNMENT VERSION
+// otp_screen.dart - WITH AUTO-FILL FEATURE
 import 'package:first_flutter/baseControllers/NavigationController/navigation_controller.dart';
 import 'package:first_flutter/constants/imgConstant/img_constant.dart';
 import 'package:first_flutter/constants/utils/app_text_style.dart';
@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 
 import '../../../NotificationService.dart';
 import '../../../constants/colorConstant/color_constant.dart';
+import '../../../constants/utils/AppSignatureHelper.dart';
 import 'otp_screen_provider.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -20,7 +22,7 @@ class OtpScreen extends StatefulWidget {
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen> {
+class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
   final List<TextEditingController> _controllers = List.generate(
     6,
     (_) => TextEditingController(),
@@ -33,11 +35,16 @@ class _OtpScreenState extends State<OtpScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNodes.first.requestFocus();
       context.read<OtpScreenProvider>().startTimer();
+      _initSmsListener();
+
+      // Get and display app signature
+      AppSignatureHelper.getAppSignature();
     });
   }
 
   @override
   void dispose() {
+    cancel(); // Cancel SMS listener
     for (final c in _controllers) {
       c.dispose();
     }
@@ -45,6 +52,34 @@ class _OtpScreenState extends State<OtpScreen> {
       f.dispose();
     }
     super.dispose();
+  }
+
+  @override
+  void codeUpdated() {
+    // This callback is triggered when SMS is received
+    if (code != null && code!.length == 6) {
+      print('Auto-filled OTP: $code');
+      _setOtpToControllers(code!);
+      _syncOtpToProvider();
+
+      // Auto-verify after a short delay
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _verifyOtp();
+        }
+      });
+    }
+  }
+
+  /// Initialize SMS auto-fill listener
+  Future<void> _initSmsListener() async {
+    try {
+      // Listen for SMS with proper error handling
+      await SmsAutoFill().listenForCode;
+      print('✓ SMS listener started successfully');
+    } catch (e) {
+      print('✗ Error starting SMS listener: $e');
+    }
   }
 
   String _getOtpFromControllers() {
@@ -77,7 +112,6 @@ class _OtpScreenState extends State<OtpScreen> {
         ],
       ),
       alignment: Alignment.center,
-      // ADDED: Center align content
       child: TextField(
         controller: _controllers[index],
         focusNode: _focusNodes[index],
@@ -86,7 +120,7 @@ class _OtpScreenState extends State<OtpScreen> {
         style: AppTextStyle.robotoBold.copyWith(
           fontSize: 24.sp,
           color: Colors.black,
-          height: 1.0, // ADDED: Control line height
+          height: 1.0,
         ),
         maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -97,7 +131,7 @@ class _OtpScreenState extends State<OtpScreen> {
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          isDense: true, // ADDED: Makes TextField more compact
+          isDense: true,
         ),
         textAlignVertical: TextAlignVertical.center,
         onChanged: (value) {
@@ -293,7 +327,7 @@ class _OtpScreenState extends State<OtpScreen> {
                       ),
                       SizedBox(height: 40.h),
 
-                      // CHANGED: Better OTP field layout with proper spacing
+                      // OTP fields with auto-fill support
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(

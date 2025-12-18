@@ -1,9 +1,12 @@
+// Complete SubcategoryResponse.dart file - Replace your entire file with this
+
 class SubcategoryResponse {
   final String message;
   final int total;
   final List<Subcategory> subcategories;
 
-  SubcategoryResponse({
+
+  SubcategoryResponse( {
     required this.message,
     required this.total,
     required this.subcategories,
@@ -36,8 +39,8 @@ class Subcategory {
   final String commission;
   final String createdAt;
   final String updatedAt;
-  final List<dynamic> explicitSite;
-  final List<dynamic> implicitSite;
+  final List<ExplicitSite> explicitSite;
+  final List<ImplicitSite> implicitSite;
   final List<Field> fields;
 
   Subcategory({
@@ -76,8 +79,14 @@ class Subcategory {
       commission: json['commission'] ?? '0.00',
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
-      explicitSite: json['explicit_site'] ?? [],
-      implicitSite: json['implicit_site'] ?? [],
+      explicitSite: (json['explicit_site'] as List?)
+          ?.map((item) => ExplicitSite.fromJson(item))
+          .toList() ??
+          [],
+      implicitSite: (json['implicit_site'] as List?)
+          ?.map((item) => ImplicitSite.fromJson(item))
+          .toList() ??
+          [],
       fields: (json['fields'] as List?)
           ?.map((item) => Field.fromJson(item))
           .toList() ??
@@ -86,6 +95,43 @@ class Subcategory {
   }
 }
 
+// Add these new classes to your SubcategoryResponse.dart file
+class ExplicitSite {
+  final String name;
+  final String image;
+
+  ExplicitSite({
+    required this.name,
+    required this.image,
+  });
+
+  factory ExplicitSite.fromJson(Map<String, dynamic> json) {
+    return ExplicitSite(
+      name: json['name'] ?? '',
+      image: json['image'] ?? '',
+    );
+  }
+}
+
+class ImplicitSite {
+  final String name;
+  final String image;
+
+  ImplicitSite({
+    required this.name,
+    required this.image,
+  });
+
+  factory ImplicitSite.fromJson(Map<String, dynamic> json) {
+    return ImplicitSite(
+      name: json['name'] ?? '',
+      image: json['image'] ?? '',
+    );
+  }
+}
+
+
+// Model for dynamic fields
 class Field {
   final int id;
   final int subcategoryId;
@@ -93,6 +139,7 @@ class Field {
   final String fieldType;
   final List<String> options;
   final bool isRequired;
+  final bool isCalculate;
   final int sortOrder;
   final String createdAt;
   final String updatedAt;
@@ -104,6 +151,7 @@ class Field {
     required this.fieldType,
     required this.options,
     required this.isRequired,
+    required this.isCalculate,
     required this.sortOrder,
     required this.createdAt,
     required this.updatedAt,
@@ -115,8 +163,12 @@ class Field {
       subcategoryId: json['subcategory_id'] ?? 0,
       fieldName: json['field_name'] ?? '',
       fieldType: json['field_type'] ?? '',
-      options: (json['options'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      options: (json['options'] as List?)
+          ?.map((e) => e.toString())
+          .toList() ??
+          [],
       isRequired: json['is_required'] ?? false,
+      isCalculate: json['is_calculate'] ?? false,
       sortOrder: json['sort_order'] ?? 0,
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',

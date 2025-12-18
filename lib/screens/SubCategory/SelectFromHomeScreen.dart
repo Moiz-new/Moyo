@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:async'; // ✅ ADDED: For AlwaysStoppedAnimation
+import 'dart:async';
 
 import 'SubcategoryProvider.dart';
 import 'SkillProvider.dart';
@@ -32,8 +32,7 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
   Map<int, File?> attachments = {};
   int? expandedCardIndex;
 
-  // ✅ 5MB limit constant (5 * 1024 * 1024 bytes)
-  static const int maxFileSizeBytes = 5 * 1024 * 1024; // 5MB
+  static const int maxFileSizeBytes = 5 * 1024 * 1024;
 
   @override
   void initState() {
@@ -52,14 +51,15 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
 
       if (result != null) {
         final file = File(result.files.single.path!);
-
-        // ✅ Check file size before accepting
         final fileSize = await file.length();
+
         if (fileSize > maxFileSizeBytes) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('File size exceeds 5MB limit. Please select a smaller file.'),
+              content: Text(
+                'File size exceeds 5MB limit. Please select a smaller file.',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -72,9 +72,9 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
     }
   }
 
@@ -88,7 +88,6 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
     final bytes = file.lengthSync();
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    // ✅ Show warning for files near 5MB limit
     final isNearLimit = bytes > (maxFileSizeBytes * 0.9);
     final sizeText = '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     return isNearLimit ? '⚠️ $sizeText (Max: 5MB)' : sizeText;
@@ -162,7 +161,6 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
 
   Future<void> _uncheckSkill(int skillId, String skillName) async {
     final subcategoryProvider = context.read<SubcategoryProvider>();
-
     final result = await subcategoryProvider.uncheckSkill(skillId);
 
     if (!mounted) return;
@@ -201,7 +199,6 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
       return;
     }
 
-    // ✅ Double-check file size before submission
     final attachment = attachments[index];
     if (attachment != null) {
       final fileSize = attachment.lengthSync();
@@ -209,7 +206,9 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('File size exceeds 5MB limit. Please select a smaller file.'),
+            content: Text(
+              'File size exceeds 5MB limit. Please select a smaller file.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -235,7 +234,6 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      // Reset the card
       setState(() {
         selectedSubcategories[index] = false;
         experienceYears[index] = "";
@@ -250,6 +248,83 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildSiteSection(
+    String title,
+    List<dynamic>? sites,
+    SubcategoryProvider provider,
+  ) {
+    if (sites == null || sites.isEmpty) return SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 16),
+        Text(
+          title,
+          style: GoogleFonts.roboto(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: ColorConstant.black,
+          ),
+        ),
+        SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: sites.map((site) {
+            return Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ColorConstant.moyoOrange),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (site.image != null && site.image!.isNotEmpty)
+                    Container(
+                      width: 24,
+                      height: 24,
+                      margin: EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: CachedNetworkImage(
+                          imageUrl: provider.getFullImageUrl(site.image),
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Icon(
+                            Icons.image,
+                            size: 16,
+                            color: ColorConstant.moyoOrange,
+                          ),
+                          errorWidget: (context, url, error) => Icon(
+                            Icons.image,
+                            size: 16,
+                            color: ColorConstant.moyoOrange,
+                          ),
+                        ),
+                      ),
+                    ),
+                  Text(
+                    site.name,
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: ColorConstant.black,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 
   @override
@@ -352,22 +427,21 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                         onTap: isAlreadyChecked
                             ? null
                             : () {
-                          setState(() {
-                            if (isSelected && isExpanded) {
-                              expandedCardIndex = null;
-                            } else if (isSelected && !isExpanded) {
-                              expandedCardIndex = index;
-                            } else {
-                              selectedSubcategories[index] = true;
-                              expandedCardIndex = index;
-                            }
-                          });
-                        },
+                                setState(() {
+                                  if (isSelected && isExpanded) {
+                                    expandedCardIndex = null;
+                                  } else if (isSelected && !isExpanded) {
+                                    expandedCardIndex = index;
+                                  } else {
+                                    selectedSubcategories[index] = true;
+                                    expandedCardIndex = index;
+                                  }
+                                });
+                              },
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             children: [
-                              // Icon
                               Container(
                                 width: 50,
                                 height: 50,
@@ -377,34 +451,36 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: subcategory.icon != null &&
-                                      subcategory.icon!.isNotEmpty
+                                  child:
+                                      subcategory.icon != null &&
+                                          subcategory.icon!.isNotEmpty
                                       ? CachedNetworkImage(
-                                    imageUrl: context
-                                        .read<SubcategoryProvider>()
-                                        .getFullImageUrl(subcategory.icon),
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Icon(
-                                      Icons.restaurant,
-                                      color: ColorConstant.moyoOrange,
-                                      size: 30,
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Icon(
+                                          imageUrl: context
+                                              .read<SubcategoryProvider>()
+                                              .getFullImageUrl(
+                                                subcategory.icon,
+                                              ),
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) => Icon(
+                                            Icons.restaurant,
+                                            color: ColorConstant.moyoOrange,
+                                            size: 30,
+                                          ),
+                                          errorWidget: (context, url, error) =>
+                                              Icon(
+                                                Icons.restaurant,
+                                                color: ColorConstant.moyoOrange,
+                                                size: 30,
+                                              ),
+                                        )
+                                      : Icon(
                                           Icons.restaurant,
                                           color: ColorConstant.moyoOrange,
                                           size: 30,
                                         ),
-                                  )
-                                      : Icon(
-                                    Icons.restaurant,
-                                    color: ColorConstant.moyoOrange,
-                                    size: 30,
-                                  ),
                                 ),
                               ),
                               SizedBox(width: 16),
-                              // Name
                               Expanded(
                                 child: Text(
                                   subcategory.name,
@@ -415,27 +491,27 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                   ),
                                 ),
                               ),
-                              // Checkbox
                               GestureDetector(
                                 onTap: isAlreadyChecked
                                     ? () {
-                                  _showUncheckDialog(
-                                    subcategory.id,
-                                    subcategory.name,
-                                  );
-                                }
+                                        _showUncheckDialog(
+                                          subcategory.id,
+                                          subcategory.name,
+                                        );
+                                      }
                                     : () {
-                                  setState(() {
-                                    selectedSubcategories[index] = !isSelected;
-                                    if (!isSelected) {
-                                      expandedCardIndex = index;
-                                    } else {
-                                      expandedCardIndex = null;
-                                      experienceYears[index] = "";
-                                      attachments[index] = null;
-                                    }
-                                  });
-                                },
+                                        setState(() {
+                                          selectedSubcategories[index] =
+                                              !isSelected;
+                                          if (!isSelected) {
+                                            expandedCardIndex = index;
+                                          } else {
+                                            expandedCardIndex = null;
+                                            experienceYears[index] = "";
+                                            attachments[index] = null;
+                                          }
+                                        });
+                                      },
                                 child: Container(
                                   width: 28,
                                   height: 28,
@@ -457,10 +533,10 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                   ),
                                   child: (isAlreadyChecked || isSelected)
                                       ? Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 20,
-                                  )
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 20,
+                                        )
                                       : null,
                                 ),
                               ),
@@ -468,7 +544,6 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                           ),
                         ),
                       ),
-
                       if (isExpanded)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -477,51 +552,6 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                             children: [
                               Divider(height: 1),
                               SizedBox(height: 16),
-
-                              // ✅ File format info with size limit
-                              Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[50],
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.grey[200]!),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.info_outline,
-                                      color: Colors.grey[600],
-                                      size: 20,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: RichText(
-                                        text: TextSpan(
-                                          style: GoogleFonts.roboto(
-                                            fontSize: 13,
-                                            color: Colors.grey[700],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          children: [
-                                            TextSpan(text: 'Supported formats: PDF, PNG, JPG, JPEG ('),
-                                            TextSpan(
-                                              text: 'Max 5MB',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: ColorConstant.moyoOrange,
-                                              ),
-                                            ),
-                                            TextSpan(text: ')'),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 16),
-
-                              // Year of Experience
                               Text(
                                 'Year Of Experience',
                                 style: GoogleFonts.roboto(
@@ -571,12 +601,10 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                 ),
                               ),
                               SizedBox(height: 16),
-
-                              // Add Attachment Button
                               InkWell(
                                 onTap: () => _pickFile(index),
                                 child: Container(
-                                  padding: EdgeInsets.symmetric(vertical: 14),
+                                  padding: EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(10),
@@ -596,7 +624,8 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                       SizedBox(width: 8),
                                       Column(
                                         mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Add Attachment',
@@ -620,8 +649,6 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                   ),
                                 ),
                               ),
-
-                              // Show attached file
                               if (attachments[index] != null) ...[
                                 SizedBox(height: 12),
                                 Container(
@@ -636,7 +663,9 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                         padding: EdgeInsets.all(8),
                                         decoration: BoxDecoration(
                                           color: ColorConstant.moyoOrange,
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Icon(
                                           Icons.description,
@@ -647,7 +676,8 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                       SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               _getFileName(attachments[index]),
@@ -683,9 +713,22 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                   ),
                                 ),
                               ],
-                              SizedBox(height: 16),
 
-                              // ✅ FIXED: Submit Button with proper CircularProgressIndicator
+                              // ✅ Display Explicit Sites
+                              _buildSiteSection(
+                                'Provider brings',
+                                subcategory.explicitSite,
+                                subcategoryProvider,
+                              ),
+
+                              // ✅ Display Implicit Sites
+                              _buildSiteSection(
+                                'Customer Provides',
+                                subcategory.implicitSite,
+                                subcategoryProvider,
+                              ),
+
+                              SizedBox(height: 16),
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
@@ -703,22 +746,23 @@ class _SelectFromHomeScreenState extends State<SelectFromHomeScreen> {
                                   ),
                                   child: skillProvider.isLoading
                                       ? SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ), // ✅ FIXED: Proper syntax
-                                    ),
-                                  )
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
+                                          ),
+                                        )
                                       : Text(
-                                    'Submit',
-                                    style: GoogleFonts.roboto(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                          'Submit',
+                                          style: GoogleFonts.roboto(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
                                 ),
                               ),
                             ],

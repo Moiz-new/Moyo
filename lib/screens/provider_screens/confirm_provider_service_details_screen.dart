@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:first_flutter/baseControllers/APis.dart';
 import 'package:first_flutter/constants/colorConstant/color_constant.dart';
 import 'package:first_flutter/widgets/user_only_title_appbar.dart';
@@ -49,10 +50,14 @@ class _ConfirmProviderServiceDetailsScreenState
   String? _arrivalTime;
   Timer? _locationUpdateTimer;
   bool _isMapReady = false;
-
+  String? providerToken;
   bool _isNearDestination = false;
   double _distanceToDestination = 0.0;
   static const double ARRIVAL_THRESHOLD_METERS = 100.0;
+
+  BitmapDescriptor? _providerMarkerIcon;
+  BitmapDescriptor? _userMarkerIcon;
+  bool _markersLoaded = false;
 
   static const String GOOGLE_MAPS_API_KEY =
       'AIzaSyBqTGBtJYtoRpvJFpF6tls1jcwlbiNcEVI';
@@ -60,6 +65,7 @@ class _ConfirmProviderServiceDetailsScreenState
   @override
   void initState() {
     super.initState();
+    _loadCustomMarkers(); // Add this line
     _initializeAndFetchData();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -69,6 +75,99 @@ class _ConfirmProviderServiceDetailsScreenState
       );
       arrivalProvider.loadTimerState(widget.serviceId);
     });
+  }
+
+  Future<void> _loadCustomMarkers() async {
+    try {
+      // Load provider marker with larger size
+      _providerMarkerIcon = await _createCustomMarkerIcon(
+        Icons.directions_bike,
+        Colors.orange,
+        90.0, // Increased from 80.0
+      );
+
+      // Load user marker
+      _userMarkerIcon = await _createCustomMarkerIcon(
+        Icons.location_on,
+        Colors.red,
+        80.0,
+      );
+
+      setState(() {
+        _markersLoaded = true;
+      });
+    } catch (e) {
+      print('Error loading custom markers: $e');
+      setState(() {
+        _markersLoaded = true;
+      });
+    }
+  }
+
+  Future<BitmapDescriptor> _createCustomMarkerIcon(
+    IconData iconData,
+    Color color,
+    double size,
+  ) async {
+    final pictureRecorder = ui.PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+
+    // Draw shadow/glow effect for provider marker
+    if (color == Colors.orange) {
+      final glowPaint = Paint()
+        ..color = Colors.orange.withOpacity(0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      canvas.drawCircle(Offset(size / 2, size / 2), size / 2 + 4, glowPaint);
+    }
+
+    // Draw main circle background
+    final paint = Paint()..color = color;
+    canvas.drawCircle(Offset(size / 2, size / 2), size / 2, paint);
+
+    // Draw white border (thicker for provider)
+    final borderWidth = color == Colors.orange ? 5.0 : 4.0;
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth;
+    canvas.drawCircle(Offset(size / 2, size / 2), size / 2, borderPaint);
+
+    // Add outer accent ring for provider
+    if (color == Colors.orange) {
+      final accentPaint = Paint()
+        ..color = Colors.deepOrange
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+      canvas.drawCircle(
+        Offset(size / 2, size / 2),
+        size / 2 + borderWidth,
+        accentPaint,
+      );
+    }
+
+    // Draw icon (larger for provider)
+    final iconSize = color == Colors.orange ? size * 0.55 : size * 0.5;
+    final textPainter = TextPainter(textDirection: ui.TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: iconSize,
+        fontFamily: iconData.fontFamily,
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset((size - textPainter.width) / 2, (size - textPainter.height) / 2),
+    );
+
+    final picture = pictureRecorder.endRecording();
+    final image = await picture.toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    return BitmapDescriptor.fromBytes(bytes!.buffer.asUint8List());
   }
 
   Future<void> _initializeAndFetchData() async {
@@ -105,7 +204,7 @@ class _ConfirmProviderServiceDetailsScreenState
   Future<void> _fetchServiceDetails() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final providerToken = prefs.getString('provider_auth_token');
+      providerToken = prefs.getString('provider_auth_token');
 
       if (providerToken == null) {
         setState(() {
@@ -117,10 +216,10 @@ class _ConfirmProviderServiceDetailsScreenState
 
       String? providerId;
       try {
-        final parts = providerToken.split('.');
-        if (parts.length == 3) {
+        final parts = providerToken?.split('.');
+        if (parts?.length == 3) {
           final payload = json.decode(
-            utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+            utf8.decode(base64Url.decode(base64Url.normalize(parts![1]))),
           );
           providerId =
               payload['provider_id']?.toString() ??
@@ -363,6 +462,7 @@ class _ConfirmProviderServiceDetailsScreenState
                       ? durationValue
                       : int.tryParse(durationValue.toString()) ?? 1,
                   durationUnit: durationUnit.toString(),
+                  authToken: providerToken!,
                 ),
               ),
             );
@@ -407,6 +507,7 @@ class _ConfirmProviderServiceDetailsScreenState
               ? durationValue
               : int.tryParse(durationValue.toString()) ?? 1,
           durationUnit: durationUnit.toString(),
+          authToken: providerToken!,
         ),
       ),
     );
@@ -435,6 +536,7 @@ class _ConfirmProviderServiceDetailsScreenState
                   ? durationValue
                   : int.tryParse(durationValue.toString()) ?? 1,
               durationUnit: durationUnit.toString(),
+              authToken: providerToken!,
             ),
           ),
         );
@@ -492,7 +594,7 @@ class _ConfirmProviderServiceDetailsScreenState
   }
 
   void _setupMap({bool animate = false}) async {
-    if (_locationData == null) return;
+    if (_locationData == null || !_markersLoaded) return;
 
     final serviceLat = double.tryParse(
       _locationData!['latitude']?.toString() ?? '0',
@@ -525,31 +627,54 @@ class _ConfirmProviderServiceDetailsScreenState
     );
     final fallbackTimeInMinutes = (distance / 0.5).round();
 
+    // Create markers with enhanced provider marker
     _markers = {
       Marker(
         markerId: const MarkerId('service_location'),
         position: serviceLocation,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        anchor: const Offset(0.5, 1.0),
+        icon:
+            _userMarkerIcon ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        anchor: const Offset(0.5, 0.5),
         infoWindow: const InfoWindow(title: 'Service Location'),
+        zIndex: 1, // Lower z-index
       ),
       Marker(
         markerId: const MarkerId('provider_location'),
         position: providerLocation,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        icon:
+            _providerMarkerIcon ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
         anchor: const Offset(0.5, 0.5),
-        infoWindow: const InfoWindow(title: 'Provider Location'),
+        infoWindow: const InfoWindow(
+          title: 'Your Location (Provider)',
+          snippet: 'Currently delivering service',
+        ),
+        zIndex: 2, // Higher z-index to appear on top
       ),
     };
 
+    // Enhanced pulsing circle for provider with gradient effect
     _circles = {
+      // Outer glow circle
+      Circle(
+        circleId: const CircleId('provider_outer_glow'),
+        center: providerLocation,
+        radius: 100,
+        fillColor: Colors.orange.withOpacity(0.08),
+        strokeColor: Colors.orange.withOpacity(0.2),
+        strokeWidth: 2,
+        zIndex: 0,
+      ),
+      // Main provider circle
       Circle(
         circleId: const CircleId('provider_circle'),
         center: providerLocation,
-        radius: 1,
-        fillColor: Colors.orange.withOpacity(0.2),
-        strokeColor: Colors.orange,
-        strokeWidth: 2,
+        radius: 60,
+        fillColor: Colors.orange.withOpacity(0.15),
+        strokeColor: Colors.orange.withOpacity(0.4),
+        strokeWidth: 3,
+        zIndex: 1,
       ),
     };
 
@@ -562,15 +687,20 @@ class _ConfirmProviderServiceDetailsScreenState
       _arrivalTime = fallbackTimeInMinutes.toString();
     }
 
+    // Enhanced polyline with better visibility
     _polylines = {
       Polyline(
         polylineId: const PolylineId('route'),
         points: routePoints,
         color: const Color(0xFF5B8DEE),
-        width: 5,
+        width: 6,
+        // Increased from 5
         geodesic: true,
         startCap: Cap.roundCap,
         endCap: Cap.roundCap,
+        patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+        // Dashed pattern
+        zIndex: 0,
       ),
     };
 

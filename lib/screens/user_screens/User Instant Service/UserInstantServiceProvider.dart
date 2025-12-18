@@ -14,6 +14,7 @@ class SubcategoryService {
   static const String baseUrl = 'https://api.moyointernational.com/api';
 
   Future<SubcategoryResponse?> fetchSubcategories(int categoryId) async {
+    print(categoryId);
     try {
       debugPrint("Service Id: $categoryId");
       final response = await http.get(
@@ -83,7 +84,6 @@ class UserInstantServiceProvider with ChangeNotifier {
 
   // form values
   final Map<String, dynamic> _formValues = {
-    'payment_method': 'postpaid',
     'duration_unit': 'hour',
     'tenure': 'one_time',
   };
@@ -332,11 +332,7 @@ class UserInstantServiceProvider with ChangeNotifier {
 
     _formValues
       ..clear()
-      ..addAll({
-        'payment_method': 'postpaid',
-        'duration_unit': 'hour',
-        'tenure': 'one_time',
-      });
+      ..addAll({'duration_unit': 'hour', 'tenure': 'one_time'});
 
     if (subcategory != null &&
         subcategory.billingType.toLowerCase() == 'time') {
@@ -352,11 +348,7 @@ class UserInstantServiceProvider with ChangeNotifier {
 
     _formValues
       ..clear()
-      ..addAll({
-        'payment_method': 'postpaid',
-        'duration_unit': 'hour',
-        'tenure': 'one_time',
-      });
+      ..addAll({'duration_unit': 'hour', 'tenure': 'one_time'});
 
     if (subcategory != null &&
         subcategory.billingType.toLowerCase() == 'time') {
@@ -376,11 +368,7 @@ class UserInstantServiceProvider with ChangeNotifier {
   void clearFormValues() {
     _formValues
       ..clear()
-      ..addAll({
-        'payment_method': 'postpaid',
-        'duration_unit': 'hour',
-        'tenure': 'one_time',
-      });
+      ..addAll({'duration_unit': 'hour', 'tenure': 'one_time'});
     notifyListeners();
   }
 
@@ -764,7 +752,7 @@ class UserInstantServiceProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _error = response?['message']?.toString() ?? 'Failed to create service';
+        _error = response?['message']?.toString() ?? 'Fields Are Required';
 
         if (_natsService.isConnected) {
           try {
@@ -822,7 +810,7 @@ class UserInstantServiceProvider with ChangeNotifier {
     _formValues
       ..clear()
       ..addAll({
-        'payment_method': 'postpaid',
+        //'payment_method': 'online',
         'duration_unit': 'hour',
         'tenure': 'one_time',
       });

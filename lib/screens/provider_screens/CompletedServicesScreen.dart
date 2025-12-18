@@ -334,13 +334,6 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
                               color: ColorConstant.onSurface,
                             ),
                           ),
-                          Text(
-                            customer['mobile'] ?? '',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: ColorConstant.onSurface,
-                            ),
-                          ),
                         ],
                       ),
                     ),

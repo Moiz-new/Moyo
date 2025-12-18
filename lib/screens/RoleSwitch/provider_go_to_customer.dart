@@ -78,6 +78,7 @@ class _ProviderGoToCustomerState extends State<ProviderGoToCustomer> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
@@ -93,46 +94,33 @@ class _ProviderGoToCustomerState extends State<ProviderGoToCustomer> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  spacing: 10,
                   children: [
+                    // ✅ FIXED: Removed invalid 'spacing'
+                    // ✅ FIXED: Centered title row
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      // ✅ Changed from spaceBetween
                       children: [
-                        Row(
-                          spacing: 10,
-                          children: [
-                            SvgPicture.asset('assets/icons/switch_role.svg'),
-                            Text(
-                              "Switch Role",
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ],
+                        // ✅ Removed invalid 'spacing'
+                        SvgPicture.asset('assets/icons/switch_role.svg'),
+                        const SizedBox(width: 10), // ✅ Proper spacing
+                        Text(
+                          "Switch Role",
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16), // ✅ Proper vertical spacing
                     _text1(context),
-                    Column(
-                      spacing: 40,
-                      children: [
-                        _customerProvider(context),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          spacing: 10,
-                          children: [
-                            SizedBox(
-                              width: 200,
-                              child: _cancelSwitchButton(context),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                    const SizedBox(height: 40), // ✅ Proper vertical spacing
+                    _customerProvider(context),
+                    const SizedBox(height: 20), // ✅ Proper vertical spacing
+                    // ✅ FIXED: Centered Switch button
+                    _switchButton(context), // New centered button method
                   ],
                 ),
               ),
@@ -148,35 +136,50 @@ class _ProviderGoToCustomerState extends State<ProviderGoToCustomer> {
     );
   }
 
-  Widget _text1(BuildContext context) {
-    return Container(
+  // ✅ NEW: Properly centered Switch button
+  Widget _switchButton(BuildContext context) {
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-      child: Text(
-        "Would you like to switch to Customer mode?",
-        textAlign: TextAlign.center,
-        maxLines: 5,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: const Color(0xFF7A7A7A),
-          fontWeight: FontWeight.w500,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: _isLoading ? Colors.grey : ColorConstant.moyoOrange,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _isLoading ? null : _switchToCustomerMode,
+            borderRadius: BorderRadius.circular(12),
+            child: Center(
+              child: Text(
+                "Switch",
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: const Color(0xFFFFFFFF),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
+  // ✅ FIXED: Remove invalid spacing from customerProvider
   Widget _customerProvider(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      spacing: 16,
       children: [
+        // ✅ Removed invalid 'spacing'
         Expanded(child: _switchModeContainer(context, Mode.customer, false)),
+        const SizedBox(width: 16), // ✅ Proper spacing
         Expanded(child: _switchModeContainer(context, Mode.provider, true)),
       ],
     );
   }
 
+  // ✅ FIXED: Remove invalid spacing from switchModeContainer
   Widget _switchModeContainer(BuildContext context, Enum mode, bool isActive) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
@@ -194,8 +197,8 @@ class _ProviderGoToCustomerState extends State<ProviderGoToCustomer> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
-        spacing: 6,
         children: [
+          // ✅ Removed invalid 'spacing'
           isActive && mode == Mode.customer
               ? SvgPicture.asset("assets/icons/customer_mode_active.svg")
               : isActive && mode == Mode.provider
@@ -203,6 +206,7 @@ class _ProviderGoToCustomerState extends State<ProviderGoToCustomer> {
               : isActive == false && mode == Mode.customer
               ? SvgPicture.asset("assets/icons/customer_mode_blur.svg")
               : SvgPicture.asset("assets/icons/provider_mode_blur.svg"),
+          const SizedBox(height: 6), // ✅ Proper spacing
           Text(
             mode == Mode.customer ? "Customer Mode" : "Provider Mode",
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -212,6 +216,7 @@ class _ProviderGoToCustomerState extends State<ProviderGoToCustomer> {
               fontWeight: FontWeight.w500,
             ),
           ),
+          const SizedBox(height: 4), // ✅ Proper spacing
           Text(
             mode == Mode.customer ? "Book services" : "Offer services",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -226,41 +231,19 @@ class _ProviderGoToCustomerState extends State<ProviderGoToCustomer> {
     );
   }
 
-  Widget _cancelSwitchButton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        spacing: 10,
-        children: [
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
-              decoration: BoxDecoration(
-                color: _isLoading ? Colors.grey : ColorConstant.moyoOrange,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: InkWell(
-                onTap: _isLoading ? null : _switchToCustomerMode,
-                borderRadius: BorderRadius.circular(12),
-                child: Center(
-                  child: Text(
-                    "Switch",
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: const Color(0xFFFFFFFF),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+  Widget _text1(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      child: Text(
+        "Would you like to switch to Customer mode?",
+        textAlign: TextAlign.center,
+        maxLines: 5,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: const Color(0xFF7A7A7A),
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

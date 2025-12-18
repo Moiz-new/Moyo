@@ -58,7 +58,7 @@ class SubcategoryProvider with ChangeNotifier {
         _errorMessage = null;
       } else {
         _errorMessage =
-        'Failed to load subcategories. Status: ${response.statusCode}';
+            'Failed to load subcategories. Status: ${response.statusCode}';
         _subcategories = [];
       }
     } catch (e) {
@@ -104,7 +104,7 @@ class SubcategoryProvider with ChangeNotifier {
         notifyListeners(); // Update UI with new data
       } else {
         _errorMessage =
-        'Failed to load subcategories. Status: ${response.statusCode}';
+            'Failed to load subcategories. Status: ${response.statusCode}';
         _subcategories = [];
         notifyListeners();
       }
@@ -149,7 +149,7 @@ class SubcategoryProvider with ChangeNotifier {
           final index = _subcategories.indexWhere((sub) => sub.id == skillId);
           if (index != -1) {
             _subcategories[index] = _subcategories[index].copyWith(
-              isSubcategory: false,  // Changed from isChecked
+              isSubcategory: false, // Changed from isChecked
             );
           }
 
@@ -164,7 +164,7 @@ class SubcategoryProvider with ChangeNotifier {
         }
       } else {
         _errorMessage =
-        'Failed to uncheck skill. Status: ${response.statusCode}';
+            'Failed to uncheck skill. Status: ${response.statusCode}';
         _isUnchecking = false;
         notifyListeners();
         return false;

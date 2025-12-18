@@ -7,7 +7,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
-
+import 'dart:io'; // Added for XFile
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../constants/colorConstant/color_constant.dart';
 import '../commonOnboarding/splashScreen/splash_screen_provider.dart';
 import '../user_screens/Profile/FAQScreen.dart';
@@ -286,12 +289,64 @@ class _SettingScreenState extends State<SettingScreen>
     );
   }
 
-  void _shareApp() {
-    Share.share(
-      'Check out this amazing app! Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share',
-      subject: 'Check out this app!',
-    );
-    _showSnackBar('Sharing app...');
+  // CHANGED: Updated _shareApp method to include app logo and referral code
+  // Replace the _shareApp method with this updated version
+
+  Future<void> _shareApp() async {
+    try {
+      // Get referral code from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final referralCode = prefs.getString('referral_code') ?? '';
+
+      // Build share message with referral code
+      String shareMessage = 'Check out this amazing app! ';
+      if (referralCode.isNotEmpty) {
+        shareMessage += 'Use my referral code: $referralCode\n\n';
+      }
+      shareMessage +=
+          'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
+
+      // Load the image from assets as bytes
+      final ByteData bytes = await rootBundle.load(
+        'assets/icons/app_icon_radius.png.png',
+      );
+      final Uint8List list = bytes.buffer.asUint8List();
+
+      // Create a temporary file
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/app_logo.png').create();
+      await file.writeAsBytes(list);
+
+      // Share with app logo image using XFile
+      final result = await Share.shareXFiles(
+        [XFile(file.path)],
+        text: shareMessage,
+        subject: 'Check out this app!',
+      );
+
+      if (result.status == ShareResultStatus.success) {
+        _showSnackBar('App shared successfully!');
+      }
+    } catch (e) {
+      print('Error sharing app with image: $e');
+      // Fallback to text-only share if image sharing fails
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final referralCode = prefs.getString('referral_code') ?? '';
+
+        String shareMessage = 'Check out this amazing app! ';
+        if (referralCode.isNotEmpty) {
+          shareMessage += 'Use my referral code: $referralCode\n\n';
+        }
+        shareMessage +=
+            'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
+
+        await Share.share(shareMessage, subject: 'Check out this app!');
+        _showSnackBar('App shared!');
+      } catch (e) {
+        _showSnackBar('Failed to share app');
+      }
+    }
   }
 
   Future<void> _rateApp() async {
@@ -564,7 +619,6 @@ class _SettingScreenState extends State<SettingScreen>
                                     child: Slider(
                                       value: settingsProvider.maxSearchDistance
                                           .toDouble(),
-                                      // Add .toDouble()
                                       min: 1.0,
                                       max: 50.0,
                                       divisions: 49,
@@ -574,7 +628,6 @@ class _SettingScreenState extends State<SettingScreen>
                                         );
                                       },
                                       onChangeEnd: (value) async {
-                                        // Call API to update radius
                                         bool success = await settingsProvider
                                             .updateWorkRadius(value.round());
 
@@ -583,7 +636,6 @@ class _SettingScreenState extends State<SettingScreen>
                                             'Search distance updated successfully',
                                           );
                                         } else {
-                                          // Show error if API call failed
                                           if (settingsProvider.errorMessage !=
                                               null) {
                                             _showSnackBar(

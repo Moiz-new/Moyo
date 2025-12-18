@@ -296,7 +296,7 @@ class _ProviderMySkillScreenState extends State<ProviderMySkillScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ProviderOnlyTitleAppbar(title: "Job Offerings"),
+      appBar: ProviderOnlyTitleAppbar(title: "Work Offerings"),
       backgroundColor: ColorConstant.scaffoldGray,
       body: Consumer<MySkillProvider>(
         builder: (context, skillProvider, child) {

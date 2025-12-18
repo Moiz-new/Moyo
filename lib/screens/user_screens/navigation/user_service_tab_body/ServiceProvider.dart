@@ -18,19 +18,17 @@ class ServiceProvider with ChangeNotifier {
   String? _natsSubscriptionTopic;
   bool _isNatsListening = false;
 
-  // ✅ CHANGED: Store providers per service ID
+  // Store providers per service ID
   Map<String, List<Map<String, dynamic>>> _serviceProviders = {};
 
   // Current selected service ID
   String? _currentServiceId;
 
   bool get isLoading => _isLoading;
-
   String? get error => _error;
-
   bool get isNatsListening => _isNatsListening;
 
-  // ✅ CHANGED: Return providers for current service only
+  // Return providers for current service only
   List<Map<String, dynamic>> get interestedProviders {
     if (_currentServiceId == null) return [];
     return _serviceProviders[_currentServiceId] ?? [];
@@ -40,11 +38,11 @@ class ServiceProvider with ChangeNotifier {
     return _allServices
         .where(
           (service) =>
-              service.status == 'assigned' ||
-              service.status == 'started' ||
-              service.status == 'arrived' ||
-              service.status == 'in_progress',
-        )
+      service.status == 'assigned' ||
+          service.status == 'started' ||
+          service.status == 'arrived' ||
+          service.status == 'in_progress',
+    )
         .toList();
   }
 
@@ -53,11 +51,11 @@ class ServiceProvider with ChangeNotifier {
     return _allServices
         .where(
           (service) => service.status == 'closed' || service.status == 'open',
-        )
+    )
         .toList();
   }
 
-  // ✅ NEW: Set current service when user opens details screen
+  // Set current service when user opens details screen
   void setCurrentService(String serviceId) {
     _currentServiceId = serviceId;
     debugPrint('🎯 Current service set to: $serviceId');
@@ -131,7 +129,7 @@ class ServiceProvider with ChangeNotifier {
     }
   }
 
-  void _handleServiceAcceptedNotification(String message) {
+  void _handleServiceAcceptedNotification(String message) async {
     try {
       debugPrint('📥 Raw message received in ServiceProvider: $message');
 
@@ -143,16 +141,13 @@ class ServiceProvider with ChangeNotifier {
 
       final serviceId = data['service_id']?.toString();
       final bidId = data['bid_id']?.toString();
-      final amount = data['amount']?.toString(); // ✅ Direct amount field
+      final amount = data['amount']?.toString();
       final acceptedAt = data['accepted_at']?.toString();
 
       final service = data['service'] as Map<String, dynamic>?;
       final providerData_raw = data['provider'] as Map<String, dynamic>?;
-
-      // ✅ NEW: Get user object from provider
       final user = providerData_raw?['user'] as Map<String, dynamic>?;
 
-      // ✅ CRITICAL: Check if serviceId exists
       if (serviceId == null) {
         debugPrint('❌ No service_id in message');
         return;
@@ -175,49 +170,33 @@ class ServiceProvider with ChangeNotifier {
         'serviceId': serviceId,
         'bidId': bidId ?? 'N/A',
         'providerName': providerName,
-
-        // ✅ Get data from user object
         'gender':
-            user?['gender']?.toString().toUpperCase().substring(0, 1) ?? 'N/A',
+        user?['gender']?.toString().toUpperCase().substring(0, 1) ?? 'N/A',
         'age': user?['age']?.toString() ?? 'N/A',
-
-        // ✅ Distance and reach time (fallback to defaults if not available)
-        'distance': '5', // Default value
-        'reachTime': '10', // Default value
-        // ✅ Category and subcategory from service
+        'distance': '5',
+        'reachTime': '10',
         'category': service?['category'] ?? 'N/A',
         'subCategory': service?['service'] ?? 'N/A',
-
-        // ✅ IMPORTANT: Use amount from root level
         'chargeRate': amount ?? service?['budget']?.toString() ?? 'N/A',
-
-        // ✅ Rating and experience (defaults for now)
-        'rating': '4.0', // Default
-        'experience': '2', // Default
-        // ✅ Profile picture from user
+        'rating': '4.0',
+        'experience': '2',
         'dp': user?['image'] ?? 'https://picsum.photos/200/200',
-
-        // ✅ Phone from user
         'phone': user?['mobile'] ?? user?['phone'] ?? 'N/A',
-
-        // ✅ Provider ID from provider object
         'providerId':
-            providerData_raw?['id']?.toString() ??
+        providerData_raw?['id']?.toString() ??
             user?['id']?.toString() ??
             bidId ??
             DateTime.now().millisecondsSinceEpoch.toString(),
-
-        // ✅ Additional info
         'acceptedAt': acceptedAt,
       };
 
-      // ✅ CHANGED: Store providers per service ID
+      // Store providers per service ID
       if (!_serviceProviders.containsKey(serviceId)) {
         _serviceProviders[serviceId] = [];
       }
 
       final existingIndex = _serviceProviders[serviceId]!.indexWhere(
-        (p) => p['providerId'] == providerData['providerId'],
+            (p) => p['providerId'] == providerData['providerId'],
       );
 
       if (existingIndex != -1) {
@@ -232,8 +211,10 @@ class ServiceProvider with ChangeNotifier {
         );
       }
 
-      // Notify listeners to update UI
-      notifyListeners();
+      // 🔥 CRITICAL: Refresh the service list when new bid arrives
+      debugPrint('🔄 Refreshing service list after NATS message...');
+      await refreshServices();
+
       debugPrint(
         '🔔 UI notified. Service $serviceId has ${_serviceProviders[serviceId]!.length} providers',
       );
@@ -266,7 +247,7 @@ class ServiceProvider with ChangeNotifier {
     debugPrint('🗑️ Cleared all service providers');
   }
 
-  // ✅ NEW: Clear providers for specific service
+  // Clear providers for specific service
   void clearProvidersForService(String serviceId) {
     _serviceProviders.remove(serviceId);
     notifyListeners();
@@ -276,10 +257,8 @@ class ServiceProvider with ChangeNotifier {
   // Get NatsService instance for StreamBuilder
   NatsService get natsService => _natsService;
 
-  // DON'T unsubscribe - keep listening throughout app lifecycle
   @override
   void dispose() {
-    // Keep NATS subscription active
     debugPrint('🔔 ServiceProvider disposed but NATS remains active');
     super.dispose();
   }

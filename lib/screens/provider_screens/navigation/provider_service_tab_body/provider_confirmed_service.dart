@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -206,9 +207,9 @@ class ServiceHistory {
       updatedAt: json['updated_at']?.toString() ?? '',
       totalBids: json['total_bids']?.toString() ?? '0',
       bids:
-          (json['bids'] as List?)
-              ?.map((b) => Bid.fromJson(b as Map<String, dynamic>))
-              .toList() ??
+      (json['bids'] as List?)
+          ?.map((b) => Bid.fromJson(b as Map<String, dynamic>))
+          .toList() ??
           [],
       customer: json['customer'] != null
           ? Customer.fromJson(json['customer'] as Map<String, dynamic>)
@@ -307,7 +308,7 @@ class Customer {
           ? double.tryParse(json['wallet'].toString()) ?? 0.0
           : 0.0,
       emailVerified:
-          json['email_verified'] == true || json['email_verified'] == 1,
+      json['email_verified'] == true || json['email_verified'] == 1,
     );
   }
 
@@ -338,21 +339,38 @@ class ProviderServiceProvider with ChangeNotifier {
   List<ServiceHistory> _services = [];
   bool _isLoading = false;
   String? _error;
+  Timer? _autoRefreshTimer;
 
   List<ServiceHistory> get services => _services;
-
   bool get isLoading => _isLoading;
-
   String? get error => _error;
 
-  Future<void> fetchServiceHistory() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+  // Start auto-refresh with configurable interval (default: 30 seconds)
+  void startAutoRefresh({Duration interval = const Duration(seconds: 30)}) {
+    stopAutoRefresh(); // Stop any existing timer
+    _autoRefreshTimer = Timer.periodic(interval, (timer) {
+      fetchServiceHistory(silentRefresh: true);
+    });
+  }
+
+  // Stop auto-refresh
+  void stopAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
+  }
+
+  Future<void> fetchServiceHistory({bool silentRefresh = false}) async {
+    // Don't show loading indicator for silent refresh
+    if (!silentRefresh) {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
       _services = await _api.getProviderServiceHistory();
       _isLoading = false;
+      _error = null;
       notifyListeners();
     } catch (e) {
       _error = e.toString();
@@ -365,6 +383,12 @@ class ProviderServiceProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  @override
+  void dispose() {
+    stopAutoRefresh();
+    super.dispose();
+  }
 }
 
 class ProviderConfirmedService extends StatefulWidget {
@@ -375,13 +399,27 @@ class ProviderConfirmedService extends StatefulWidget {
       _ProviderConfirmedServiceState();
 }
 
-class _ProviderConfirmedServiceState extends State<ProviderConfirmedService> {
+class _ProviderConfirmedServiceState extends State<ProviderConfirmedService>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProviderServiceProvider>().fetchServiceHistory();
+      final provider = context.read<ProviderServiceProvider>();
+      provider.fetchServiceHistory();
+      // Start auto-refresh every 30 seconds
+      provider.startAutoRefresh(interval: const Duration(seconds: 30));
     });
+  }
+
+  @override
+  void dispose() {
+    // Stop auto-refresh when widget is disposed
+    context.read<ProviderServiceProvider>().stopAutoRefresh();
+    super.dispose();
   }
 
   String _formatDate(String? dateStr) {
@@ -434,7 +472,7 @@ class _ProviderConfirmedServiceState extends State<ProviderConfirmedService> {
       case 'closed':
         return 'Closed';
       default:
-        // Capitalize first letter for unknown statuses
+      // Capitalize first letter for unknown statuses
         return status.isNotEmpty
             ? status[0].toUpperCase() + status.substring(1)
             : 'Unknown';
@@ -452,6 +490,8 @@ class _ProviderConfirmedServiceState extends State<ProviderConfirmedService> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     return Scaffold(
       body: Consumer<ProviderServiceProvider>(
         builder: (context, provider, child) {
@@ -525,6 +565,15 @@ class _ProviderConfirmedServiceState extends State<ProviderConfirmedService> {
                   Text(
                     'Confirmed services will appear here',
                     style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Auto-refreshing every 30 seconds',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[400],
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
               ),

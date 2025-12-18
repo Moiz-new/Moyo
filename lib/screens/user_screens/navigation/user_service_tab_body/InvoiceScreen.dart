@@ -194,10 +194,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         widget.service.customer.email!,
                         style: pw.TextStyle(fontSize: 12),
                       ),
-                    pw.Text(
-                      widget.service.customer.mobile,
-                      style: pw.TextStyle(fontSize: 12),
-                    ),
+
                   ],
                 ),
                 pw.Container(
@@ -701,13 +698,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                                     color: Colors.grey[700],
                                   ),
                                 ),
-                              Text(
-                                widget.service.customer.mobile,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
+
                             ],
                           ),
                         ),

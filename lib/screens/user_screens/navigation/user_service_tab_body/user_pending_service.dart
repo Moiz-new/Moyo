@@ -13,30 +13,41 @@ class UserPendingService extends StatefulWidget {
   State<UserPendingService> createState() => _UserPendingServiceState();
 }
 
-class _UserPendingServiceState extends State<UserPendingService> {
+class _UserPendingServiceState extends State<UserPendingService>
+    with AutomaticKeepAliveClientMixin {
+
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
-    _initializeNatsForServiceDetails();
-  }
-
-  Future<void> _initializeNatsForServiceDetails() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('user_id');
-
-    if (userId != null) {
-      // Initialize NATS subscription when landing on this screen
-      context.read<ServiceProvider>().initializeServiceNatsSubscription(userId);
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeAndFetch();
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final provider = context.read<ServiceProvider>();
-    if (provider.filteredServices.isEmpty && !provider.isLoading) {
-      provider.fetchServices();
+    // This will refresh when the tab becomes visible again
+    if (mounted) {
+      _initializeAndFetch();
     }
+  }
+
+  Future<void> _initializeAndFetch() async {
+    final provider = context.read<ServiceProvider>();
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id');
+
+    if (userId != null) {
+      // Initialize NATS subscription
+      await provider.initializeServiceNatsSubscription(userId);
+    }
+
+    // Always fetch fresh services
+    await provider.fetchServices();
   }
 
   String _getDuration(ServiceModel service) {
@@ -49,7 +60,6 @@ class _UserPendingServiceState extends State<UserPendingService> {
   }
 
   String _getPriceBy(ServiceModel service) {
-    // Return bid amount if available, otherwise return budget
     if (service.bids.isNotEmpty) {
       return service.bids.first.amount.toStringAsFixed(0);
     }
@@ -58,13 +68,15 @@ class _UserPendingServiceState extends State<UserPendingService> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     return Consumer<ServiceProvider>(
       builder: (context, provider, child) {
-        if (provider.isLoading) {
+        if (provider.isLoading && provider.filteredServices.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (provider.error != null) {
+        if (provider.error != null && provider.filteredServices.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -93,7 +105,7 @@ class _UserPendingServiceState extends State<UserPendingService> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                 Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   'No closed or pending services found',
@@ -114,7 +126,6 @@ class _UserPendingServiceState extends State<UserPendingService> {
             itemCount: provider.filteredServices.length,
             itemBuilder: (context, index) {
               final service = provider.filteredServices[index];
-              print("Providerrrrrrrrrrr111111${service?.assignedProviderId}");
 
               return UserServiceListCard(
                 category: service.category,
@@ -133,16 +144,19 @@ class _UserPendingServiceState extends State<UserPendingService> {
                     arguments: service,
                   );
 
-                  // Initialize NATS subscription when returning from details screen
+                  // ✅ CHANGE: Refresh when booking is successful
                   if (result == true && mounted) {
-                    final prefs = await SharedPreferences.getInstance();
-                    final userId = prefs.getInt('user_id');
+                    // Show loading indicator
+                    provider.refreshServices();
 
-                    if (userId != null) {
-                      // Initialize NATS subscription when landing on this screen
-                      context
-                          .read<ServiceProvider>()
-                          .initializeServiceNatsSubscription(userId);
+                    // Show success message
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Service list updated'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
                     }
                   }
                 },

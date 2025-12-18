@@ -106,7 +106,8 @@ class _UserOngoingServiceState extends State<UserOngoingService> {
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
                     color: Colors.grey[600],
-                  ),                ),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Text(
                   'Services will appear here once assigned',
@@ -132,7 +133,8 @@ class _UserOngoingServiceState extends State<UserOngoingService> {
                 dp: "https://ui-avatars.com/api/?name=${service.category}&background=random",
                 price: service.budget,
                 duration: _getDuration(service),
-                priceBy: _getPriceBy(service), // Now shows bid amount (600)
+                priceBy: _getPriceBy(service),
+                // Now shows bid amount (600)
                 providerCount: int.tryParse(service.totalBids) ?? 0,
                 status: service.status,
                 onPress: () async {

@@ -114,48 +114,62 @@ class _UserMyRatingState extends State<UserMyRating> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: ColorConstant.scaffoldGray,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back_ios, color: ColorConstant.onSurface, size: 20.sp),
+        ),
+        title: Text(
+          'My Ratings',
+          style: TextStyle(
+            fontSize: 20.sp,
+            fontWeight: FontWeight.w600,
+            color: ColorConstant.onSurface,
+          ),
+        ),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              ColorConstant.moyoOrangeFade.withOpacity(0.3),
+              ColorConstant.moyoOrangeFade.withOpacity(0.15),
               ColorConstant.scaffoldGray,
             ],
           ),
         ),
-        child: SafeArea(
-          child: isLoading
-              ? Center(
-                  child: CircularProgressIndicator(
-                    color: ColorConstant.moyoOrange,
-                  ),
-                )
-              : errorMessage != null
-              ? _buildErrorWidget()
-              : _buildRatingContent(),
-        ),
+        child: isLoading
+            ? Center(
+          child: CircularProgressIndicator(
+            color: ColorConstant.moyoOrange,
+            strokeWidth: 3,
+          ),
+        )
+            : errorMessage != null
+            ? _buildErrorWidget()
+            : _buildRatingContent(),
       ),
     );
   }
 
   Widget _buildErrorWidget() {
-    print(errorMessage);
     return Center(
       child: Padding(
         padding: EdgeInsets.all(24.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64.sp, color: Colors.red),
-            SizedBox(height: 16.h),
+            Icon(Icons.error_outline, size: 48.sp, color: Colors.red.shade400),
+            SizedBox(height: 12.h),
             Text(
               errorMessage!,
-              style: TextStyle(fontSize: 16.sp, color: ColorConstant.onSurface),
+              style: TextStyle(fontSize: 14.sp, color: ColorConstant.onSurface),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 24.h),
+            SizedBox(height: 20.h),
             ElevatedButton(
               onPressed: () {
                 setState(() {
@@ -167,12 +181,13 @@ class _UserMyRatingState extends State<UserMyRating> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: ColorConstant.moyoOrange,
                 foregroundColor: ColorConstant.white,
-                padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
+                elevation: 0,
               ),
-              child: Text('Retry', style: TextStyle(fontSize: 16.sp)),
+              child: Text('Retry', style: TextStyle(fontSize: 14.sp)),
             ),
           ],
         ),
@@ -182,149 +197,148 @@ class _UserMyRatingState extends State<UserMyRating> {
 
   Widget _buildRatingContent() {
     final averageRating = ratingData?['average_rating']?.toDouble() ?? 0.0;
-    final totalRatings =
-        ratingData?['total_ratings'] ?? individualRatings.length;
+    final totalRatings = ratingData?['total_ratings'] ?? individualRatings.length;
 
     return SingleChildScrollView(
+      physics: BouncingScrollPhysics(),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(
-                    Icons.arrow_back_ios,
-                    color: ColorConstant.onSurface,
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                Text(
-                  'My Ratings',
-                  style: TextStyle(
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.bold,
-                    color: ColorConstant.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 32.h),
-
-            // Main Rating Card
+            // Compact Rating Overview Card
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(32.w),
+              padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
                     ColorConstant.moyoOrange,
-                    ColorConstant.moyoScaffoldGradient,
+                    ColorConstant.moyoOrange.withOpacity(0.8),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(24.r),
+                borderRadius: BorderRadius.circular(16.r),
                 boxShadow: [
                   BoxShadow(
-                    color: ColorConstant.moyoOrange.withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: Offset(0, 10),
+                    color: ColorConstant.moyoOrange.withOpacity(0.25),
+                    blurRadius: 12,
+                    offset: Offset(0, 6),
                   ),
                 ],
               ),
-              child: Column(
+              child: Row(
                 children: [
-                  Text(
-                    'Average Rating',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w500,
-                      color: ColorConstant.white.withOpacity(0.9),
-                      letterSpacing: 1,
-                    ),
+                  // Rating Number
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        averageRating.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 48.sp,
+                          fontWeight: FontWeight.bold,
+                          color: ColorConstant.white,
+                          height: 1,
+                        ),
+                      ),
+                      SizedBox(height: 6.h),
+                      Row(
+                        children: List.generate(5, (index) {
+                          if (index < averageRating.floor()) {
+                            return Icon(Icons.star_rounded, color: ColorConstant.white, size: 18.sp);
+                          } else if (index < averageRating) {
+                            return Icon(Icons.star_half_rounded, color: ColorConstant.white, size: 18.sp);
+                          } else {
+                            return Icon(Icons.star_outline_rounded, color: ColorConstant.white.withOpacity(0.5), size: 18.sp);
+                          }
+                        }),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 16.h),
-                  Text(
-                    averageRating.toStringAsFixed(1),
-                    style: TextStyle(
-                      fontSize: 72.sp,
-                      fontWeight: FontWeight.bold,
-                      color: ColorConstant.white,
-                      height: 1,
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
-                  _buildStarRating(averageRating),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'Based on $totalRatings ${totalRatings == 1 ? 'review' : 'reviews'}',
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: ColorConstant.white.withOpacity(0.85),
+                  SizedBox(width: 20.w),
+                  // Stats
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Average Rating',
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            color: ColorConstant.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 6.h),
+                        Text(
+                          '$totalRatings ${totalRatings == 1 ? 'Review' : 'Reviews'}',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                            color: ColorConstant.white,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 24.h),
+            SizedBox(height: 16.h),
 
-            // Stats Cards
+            // Compact Rating Breakdown
+            _buildCompactRatingBreakdown(),
+            SizedBox(height: 20.h),
+
+            // Reviews Header
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: _buildStatCard(
-                    icon: Icons.star_rounded,
-                    title: 'Total Reviews',
-                    value: totalRatings.toString(),
-                    color: ColorConstant.darkPrimary,
+                Text(
+                  'Reviews',
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                    color: ColorConstant.onSurface,
                   ),
                 ),
+                if (individualRatings.isNotEmpty)
+                  Text(
+                    '${individualRatings.length} total',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: ColorConstant.onSurface.withOpacity(0.6),
+                    ),
+                  ),
               ],
             ),
-            SizedBox(height: 24.h),
-
-            // Rating Breakdown
-            _buildRatingBreakdown(),
-            SizedBox(height: 24.h),
+            SizedBox(height: 12.h),
 
             // Individual Reviews
             if (individualRatings.isNotEmpty) ...[
-              Text(
-                'Recent Reviews',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                  color: ColorConstant.onSurface,
-                ),
-              ),
-              SizedBox(height: 16.h),
-              ...individualRatings
-                  .map((rating) => _buildReviewCard(rating))
-                  .toList(),
+              ...individualRatings.map((rating) => _buildCompactReviewCard(rating)).toList(),
             ] else ...[
               Container(
-                padding: EdgeInsets.all(24.w),
+                padding: EdgeInsets.all(32.w),
                 decoration: BoxDecoration(
                   color: ColorConstant.white,
-                  borderRadius: BorderRadius.circular(16.r),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Center(
                   child: Column(
                     children: [
                       Icon(
                         Icons.rate_review_outlined,
-                        size: 48.sp,
+                        size: 40.sp,
                         color: ColorConstant.onSurface.withOpacity(0.3),
                       ),
-                      SizedBox(height: 12.h),
+                      SizedBox(height: 10.h),
                       Text(
                         'No reviews yet',
                         style: TextStyle(
-                          fontSize: 16.sp,
+                          fontSize: 14.sp,
                           color: ColorConstant.onSurface.withOpacity(0.6),
                         ),
                       ),
@@ -333,13 +347,14 @@ class _UserMyRatingState extends State<UserMyRating> {
                 ),
               ),
             ],
+            SizedBox(height: 16.h),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildReviewCard(dynamic rating) {
+  Widget _buildCompactReviewCard(dynamic rating) {
     final stars = rating['rating'] ?? 0;
     final review = rating['review'] ?? 'No review text';
     final createdAt = rating['created_at'] ?? '';
@@ -352,16 +367,16 @@ class _UserMyRatingState extends State<UserMyRating> {
     }
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.all(20.w),
+      margin: EdgeInsets.only(bottom: 10.h),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         color: ColorConstant.white,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -374,13 +389,11 @@ class _UserMyRatingState extends State<UserMyRating> {
               Row(
                 children: List.generate(5, (index) {
                   return Icon(
-                    index < stars
-                        ? Icons.star_rounded
-                        : Icons.star_outline_rounded,
+                    index < stars ? Icons.star_rounded : Icons.star_outline_rounded,
                     color: index < stars
                         ? ColorConstant.moyoOrange
-                        : ColorConstant.onSurface.withOpacity(0.3),
-                    size: 20.sp,
+                        : ColorConstant.onSurface.withOpacity(0.25),
+                    size: 16.sp,
                   );
                 }),
               ),
@@ -388,119 +401,42 @@ class _UserMyRatingState extends State<UserMyRating> {
                 Text(
                   '${date.day}/${date.month}/${date.year}',
                   style: TextStyle(
-                    fontSize: 12.sp,
+                    fontSize: 11.sp,
                     color: ColorConstant.onSurface.withOpacity(0.5),
                   ),
                 ),
             ],
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 8.h),
           Text(
             review,
             style: TextStyle(
-              fontSize: 14.sp,
-              color: ColorConstant.onSurface,
-              height: 1.5,
+              fontSize: 13.sp,
+              color: ColorConstant.onSurface.withOpacity(0.85),
+              height: 1.4,
             ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStarRating(double rating) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(5, (index) {
-        if (index < rating.floor()) {
-          return Icon(
-            Icons.star_rounded,
-            color: ColorConstant.white,
-            size: 32.sp,
-          );
-        } else if (index < rating) {
-          return Icon(
-            Icons.star_half_rounded,
-            color: ColorConstant.white,
-            size: 32.sp,
-          );
-        } else {
-          return Icon(
-            Icons.star_outline_rounded,
-            color: ColorConstant.white.withOpacity(0.5),
-            size: 32.sp,
-          );
-        }
-      }),
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(
-        color: ColorConstant.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 24.sp),
-          ),
-          SizedBox(height: 12.h),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24.sp,
-              fontWeight: FontWeight.bold,
-              color: ColorConstant.onSurface,
-            ),
-          ),
-          SizedBox(height: 4.h),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: ColorConstant.onSurface.withOpacity(0.6),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRatingBreakdown() {
+  Widget _buildCompactRatingBreakdown() {
     final distribution = _calculateRatingDistribution();
     final total = individualRatings.length;
 
     return Container(
-      padding: EdgeInsets.all(24.w),
+      padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: ColorConstant.white,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -508,81 +444,63 @@ class _UserMyRatingState extends State<UserMyRating> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Rating Details',
+            'Rating Breakdown',
             style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
               color: ColorConstant.onSurface,
             ),
           ),
-          SizedBox(height: 20.h),
-          _buildRatingBar(
-            5,
-            total > 0 ? (distribution[5] ?? 0) / total : 0.0,
-            distribution[5] ?? 0,
-          ),
           SizedBox(height: 12.h),
-          _buildRatingBar(
-            4,
-            total > 0 ? (distribution[4] ?? 0) / total : 0.0,
-            distribution[4] ?? 0,
-          ),
-          SizedBox(height: 12.h),
-          _buildRatingBar(
-            3,
-            total > 0 ? (distribution[3] ?? 0) / total : 0.0,
-            distribution[3] ?? 0,
-          ),
-          SizedBox(height: 12.h),
-          _buildRatingBar(
-            2,
-            total > 0 ? (distribution[2] ?? 0) / total : 0.0,
-            distribution[2] ?? 0,
-          ),
-          SizedBox(height: 12.h),
-          _buildRatingBar(
-            1,
-            total > 0 ? (distribution[1] ?? 0) / total : 0.0,
-            distribution[1] ?? 0,
-          ),
+          ...List.generate(5, (index) {
+            final stars = 5 - index;
+            final count = distribution[stars] ?? 0;
+            final percentage = total > 0 ? count / total : 0.0;
+            return Padding(
+              padding: EdgeInsets.only(bottom: index == 4 ? 0 : 8.h),
+              child: _buildCompactRatingBar(stars, percentage, count),
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildRatingBar(int stars, double percentage, int count) {
+  Widget _buildCompactRatingBar(int stars, double percentage, int count) {
     return Row(
       children: [
         Text(
           '$stars',
           style: TextStyle(
-            fontSize: 14.sp,
+            fontSize: 12.sp,
             fontWeight: FontWeight.w600,
             color: ColorConstant.onSurface,
           ),
         ),
-        SizedBox(width: 4.w),
-        Icon(Icons.star, size: 16.sp, color: ColorConstant.moyoOrange),
-        SizedBox(width: 12.w),
+        SizedBox(width: 3.w),
+        Icon(Icons.star, size: 13.sp, color: ColorConstant.moyoOrange),
+        SizedBox(width: 8.w),
         Expanded(
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4.r),
+            borderRadius: BorderRadius.circular(3.r),
             child: LinearProgressIndicator(
               value: percentage,
-              backgroundColor: ColorConstant.moyoOrangeFade.withOpacity(0.3),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                ColorConstant.moyoOrange,
-              ),
-              minHeight: 8.h,
+              backgroundColor: ColorConstant.moyoOrangeFade.withOpacity(0.2),
+              valueColor: AlwaysStoppedAnimation<Color>(ColorConstant.moyoOrange),
+              minHeight: 6.h,
             ),
           ),
         ),
-        SizedBox(width: 12.w),
-        Text(
-          '${(percentage * 100).toInt()}% ($count)',
-          style: TextStyle(
-            fontSize: 12.sp,
-            color: ColorConstant.onSurface.withOpacity(0.6),
+        SizedBox(width: 8.w),
+        SizedBox(
+          width: 50.w,
+          child: Text(
+            '${(percentage * 100).toInt()}% ($count)',
+            style: TextStyle(
+              fontSize: 11.sp,
+              color: ColorConstant.onSurface.withOpacity(0.6),
+            ),
+            textAlign: TextAlign.end,
           ),
         ),
       ],

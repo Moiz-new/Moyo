@@ -194,46 +194,28 @@ class _UserGoToProviderState extends State<UserGoToProvider> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // ✅ FIXED: Centered title row
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Row(
-                          spacing: 10,
-                          children: [
-                            SvgPicture.asset('assets/icons/switch_role.svg'),
-                            Text(
-                              "Switch Role",
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ],
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [ // Removed invalid 'spacing'
+                        SvgPicture.asset('assets/icons/switch_role.svg'),
+                        const SizedBox(width: 10), // ✅ Proper spacing
+                        Text(
+                          "Switch Role",
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-
-                        // Logout Button
                       ],
                     ),
+                    const SizedBox(height: 16), // ✅ Proper vertical spacing
                     _text1(context),
-                    Column(
-                      spacing: 40,
-                      children: [
-                        _customerProvider(context),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          spacing: 10,
-                          children: [
-                            SizedBox(
-                              width: 200,
-                              child: _cancelSwitchButton(context),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                    const SizedBox(height: 40), // ✅ Proper vertical spacing
+                    _customerProvider(context),
+                    const SizedBox(height: 20),
+                    // ✅ FIXED: Centered Switch button
+                    _switchButton(context), // New centered button method
                   ],
                 ),
               ),
@@ -248,6 +230,49 @@ class _UserGoToProviderState extends State<UserGoToProvider> {
       ],
     );
   }
+
+// ✅ NEW: Properly centered Switch button
+  Widget _switchButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: _isLoading ? Colors.grey : ColorConstant.moyoOrange,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _isLoading ? null : _switchToProviderMode,
+            borderRadius: BorderRadius.circular(12),
+            child: Center( // ✅ Centers text perfectly
+              child: Text(
+                "Switch",
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: const Color(0xFFFFFFFF),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+// ✅ FIXED: Remove invalid spacing from customerProvider
+  Widget _customerProvider(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [ // Removed invalid 'spacing'
+        Expanded(child: _switchModeContainer(context, Mode.customer, true)),
+        const SizedBox(width: 16), // ✅ Proper spacing
+        Expanded(child: _switchModeContainer(context, Mode.provider, false)),
+      ],
+    );
+  }
+
 
   Widget _text1(BuildContext context) {
     return Container(
@@ -266,17 +291,6 @@ class _UserGoToProviderState extends State<UserGoToProvider> {
     );
   }
 
-  Widget _customerProvider(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      spacing: 16,
-      children: [
-        Expanded(child: _switchModeContainer(context, Mode.customer, true)),
-        Expanded(child: _switchModeContainer(context, Mode.provider, false)),
-      ],
-    );
-  }
 
   Widget _switchModeContainer(BuildContext context, Enum mode, bool isActive) {
     return Container(

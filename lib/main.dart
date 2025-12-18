@@ -37,6 +37,7 @@ import 'package:first_flutter/screens/user_screens/SubCategory/SubCategoryStateP
 import 'package:first_flutter/screens/user_screens/SubCategory/sub_cat_of_cat_screen.dart';
 import 'package:first_flutter/screens/user_screens/User%20Instant%20Service/UserInstantServiceProvider.dart';
 import 'package:first_flutter/screens/user_screens/navigation/EmergencyContactProvider.dart';
+import 'package:first_flutter/screens/user_screens/navigation/RazorpayProvider.dart';
 import 'package:first_flutter/screens/user_screens/navigation/SOSProvider.dart';
 import 'package:first_flutter/screens/user_screens/navigation/UserChats/UserChatProvider.dart';
 import 'package:first_flutter/screens/user_screens/navigation/UserSOSProvider.dart';
@@ -158,6 +159,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => EmergencyContactProvider()),
         ChangeNotifierProvider(create: (_) => SOSProvider()),
         ChangeNotifierProvider(create: (_) => UserSOSProvider()),
+        ChangeNotifierProvider(create: (_) => RazorpayProvider()),
       ],
       child: const MyApp(),
     ),
