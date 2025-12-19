@@ -24,6 +24,8 @@ class UserInterestedProviderListCard extends StatelessWidget {
   final String? dp;
   final VoidCallback? onBook;
 
+  final double? remainingTime;
+
   const UserInterestedProviderListCard({
     super.key,
     this.providerName,
@@ -38,6 +40,7 @@ class UserInterestedProviderListCard extends StatelessWidget {
     this.rating,
     this.experience,
     this.dp,
+    this.remainingTime,
     this.onBook,
   });
 
@@ -74,7 +77,12 @@ class UserInterestedProviderListCard extends StatelessWidget {
                 rating: rating,
                 experience: experience,
               ),
-              _bookProviderDp(context, dp: dp, onBook: onBook),
+              _bookProviderDp(
+                context,
+                dp: dp,
+                onBook: onBook,
+                remainingTime: remainingTime,
+              ),
             ],
           ),
         ),
@@ -84,13 +92,13 @@ class UserInterestedProviderListCard extends StatelessWidget {
 
   /// module method
   Widget _nameGenderAgeDistanceReachTime(
-      BuildContext context, {
-        String? providerName,
-        String? gender,
-        String? age,
-        String? distance,
-        String? reachTime,
-      }) {
+    BuildContext context, {
+    String? providerName,
+    String? gender,
+    String? age,
+    String? distance,
+    String? reachTime,
+  }) {
     return Container(
       height: 44.h,
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -161,10 +169,10 @@ class UserInterestedProviderListCard extends StatelessWidget {
   }
 
   Widget _categorySubCategory(
-      BuildContext context, {
-        String? category,
-        String? subCategory,
-      }) {
+    BuildContext context, {
+    String? category,
+    String? subCategory,
+  }) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
@@ -182,12 +190,12 @@ class UserInterestedProviderListCard extends StatelessWidget {
   }
 
   _chargesRateIsVerifiedRatingExperience(
-      BuildContext context, {
-        String? chargeRate,
-        bool? isVerified,
-        String? rating,
-        String? experience,
-      }) {
+    BuildContext context, {
+    String? chargeRate,
+    bool? isVerified,
+    String? rating,
+    String? experience,
+  }) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
@@ -213,7 +221,10 @@ class UserInterestedProviderListCard extends StatelessWidget {
               SizedBox(width: 6.w),
               if (isVerified == true)
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 2.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 2.h,
+                  ),
                   decoration: BoxDecoration(
                     color: Color(0xFFABF383),
                     borderRadius: BorderRadius.all(Radius.circular(50.r)),
@@ -279,10 +290,15 @@ class UserInterestedProviderListCard extends StatelessWidget {
   }
 
   Widget _bookProviderDp(
-      BuildContext context, {
-        String? dp,
-        VoidCallback? onBook,
-      }) {
+    BuildContext context, {
+    String? dp,
+    VoidCallback? onBook,
+    double? remainingTime,
+  }) {
+    final progress = remainingTime != null
+        ? (remainingTime / 30.0).clamp(0.0, 1.0)
+        : 0.0;
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
@@ -291,30 +307,60 @@ class UserInterestedProviderListCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           InkWell(
-            onTap: onBook,
+            onTap: remainingTime != null && remainingTime > 0 ? onBook : null,
             child: Container(
               width: 200.w,
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+              height: 40.h,
               decoration: BoxDecoration(
-                color: ColorConstant.moyoOrange,
+                color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(50.r),
               ),
-              child: Text(
-                "Book this provider",
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontSize: 14.sp,
-                  color: Color(0xFFFFFFFF),
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Stack(
+                children: [
+                  // Progress background
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(50.r),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: progress,
+                        child: Container(
+                          height: 40.h,
+                          decoration: BoxDecoration(
+                            color: ColorConstant.moyoOrange,
+                            borderRadius: BorderRadius.circular(50.r),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Text overlay
+                  Center(
+                    child: Text(
+                      remainingTime != null && remainingTime > 0
+                          ? "Book this provider"
+                          : "Expired",
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontSize: 14.sp,
+                        color: remainingTime != null && remainingTime > 0
+                            ? Color(0xFFFFFFFF)
+                            : Color(0xFF808080),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           Container(
             clipBehavior: Clip.hardEdge,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(100.r)),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(100.r),
+            ),
             height: 54.h,
             width: 54.w,
             child: Stack(

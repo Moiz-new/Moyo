@@ -18,7 +18,7 @@ class UserTabBar extends StatelessWidget {
         labelColor: ColorConstant.black,
         indicatorSize: TabBarIndicatorSize.tab,
         tabs: [
-          Tab(
+         /* Tab(
             icon: Text(
               "Pending",
               textAlign: TextAlign.center,
@@ -28,7 +28,7 @@ class UserTabBar extends StatelessWidget {
                 context,
               ).textTheme.titleMedium?.copyWith(height: 1.11),
             ),
-          ),
+          ),*/
           Tab(
             icon: Text(
               "Ongoing",

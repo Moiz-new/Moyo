@@ -16,7 +16,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("Title: ${message.notification?.title}");
   print("Body: ${message.notification?.body}");
 
-  // Background mein bhi local notification show karo with custom sound
+  // Background mein bhi local notification show karo with conditional custom sound
   await NotificationService.showLocalNotificationStatic(message);
 }
 
@@ -28,10 +28,22 @@ class NotificationService {
 
   // 🔥 NAVIGATION KEY: Global navigation ke liye
   static final GlobalKey<NavigatorState> navigatorKey =
-      GlobalKey<NavigatorState>();
+  GlobalKey<NavigatorState>();
 
   // ================== CUSTOM SOUND CONFIGURATION ==================
-  static const String _customSoundFileName = 'notification_sound';
+  static const String _defaultSoundFileName = 'notification_sound';
+  static const String _serviceCompletedSoundFileName = 'notification_sound1';
+
+  // Helper method to get sound based on title
+  static String _getSoundFileName(RemoteMessage message) {
+    final title = message.notification?.title ?? '';
+    if (title == 'Service Completed') {
+      print("🔊 Using SERVICE COMPLETED sound: $_serviceCompletedSoundFileName");
+      return _serviceCompletedSoundFileName;
+    }
+    print("🔊 Using DEFAULT sound: $_defaultSoundFileName");
+    return _defaultSoundFileName;
+  }
 
   // ================== INITIALIZATION ==================
   static Future<void> initializeNotifications() async {
@@ -42,8 +54,8 @@ class NotificationService {
     // 1. Setup Local Notifications
     await _setupLocalNotifications();
 
-    // 2. Create Android Notification Channel (with custom sound)
-    await _createNotificationChannel();
+    // 2. Create Android Notification Channels (BOTH sounds)
+    await _createNotificationChannels();
 
     // 3. Set Foreground Notification Options (iOS)
     await _setForegroundOptions();
@@ -61,6 +73,57 @@ class NotificationService {
     setupTokenRefreshListener();
 
     print("=== ✅ Notification Initialization Complete ===");
+  }
+
+  // Create TWO Android Notification Channels - one for each sound
+  static Future<void> _createNotificationChannels() async {
+    // Default channel (notification_sound)
+    final defaultAndroidSound = RawResourceAndroidNotificationSound(
+      _defaultSoundFileName,
+    );
+    final defaultChannel = AndroidNotificationChannel(
+      'moyo_high_importance_custom',
+      'Moyo Custom Notifications',
+      description: 'Default notifications with custom sound',
+      importance: Importance.max,
+      playSound: true,
+      sound: defaultAndroidSound,
+      enableVibration: true,
+      showBadge: true,
+      enableLights: true,
+    );
+
+    // Service Completed channel (notification_sound1)
+    final serviceCompletedAndroidSound = RawResourceAndroidNotificationSound(
+      _serviceCompletedSoundFileName,
+    );
+    final serviceCompletedChannel = AndroidNotificationChannel(
+      'moyo_service_completed',
+      'Service Completed Notifications',
+      description: 'Service completion notifications with special sound',
+      importance: Importance.max,
+      playSound: true,
+      sound: serviceCompletedAndroidSound,
+      enableVibration: true,
+      showBadge: true,
+      enableLights: true,
+    );
+
+    await _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+    >()
+        ?.createNotificationChannel(defaultChannel);
+
+    await _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+    >()
+        ?.createNotificationChannel(serviceCompletedChannel);
+
+    print("✅ Both channels created:");
+    print("   Default: moyo_high_importance_custom ($_defaultSoundFileName)");
+    print("   Service: moyo_service_completed ($_serviceCompletedSoundFileName)");
   }
 
   // Setup Local Notifications Plugin
@@ -89,35 +152,6 @@ class NotificationService {
     print("✅ Local notifications initialized");
   }
 
-  // Create Android Notification Channel with Custom Sound
-  static Future<void> _createNotificationChannel() async {
-    final androidSound = RawResourceAndroidNotificationSound(
-      _customSoundFileName,
-    );
-
-    final channel = AndroidNotificationChannel(
-      'moyo_high_importance_custom',
-      'Moyo Custom Notifications',
-      description: 'Notifications with custom sound',
-      importance: Importance.max,
-      playSound: true,
-      sound: androidSound,
-      // 🔊 Custom sound
-      enableVibration: true,
-      showBadge: true,
-      enableLights: true,
-    );
-
-    await _flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
-
-    print("✅ Channel created with custom sound: ${channel.id}");
-    print("🔊 Sound file: $_customSoundFileName");
-  }
-
   // Set Foreground Notification Options for iOS
   static Future<void> _setForegroundOptions() async {
     await _firebaseMessaging.setForegroundNotificationPresentationOptions(
@@ -138,7 +172,7 @@ class NotificationService {
       print("Body: ${message.notification?.body}");
       print("Data: ${message.data}");
 
-      // Show local notification when app is in foreground
+      // Show local notification when app is in foreground with conditional sound
       _showLocalNotification(message);
     });
   }
@@ -167,19 +201,24 @@ class NotificationService {
     }
   }
 
-  // Show Local Notification with Custom Sound (Instance method)
+  // Show Local Notification with Conditional Custom Sound (Instance method)
   static Future<void> _showLocalNotification(RemoteMessage message) async {
-    print("=== 📲 Showing notification with custom sound ===");
+    print("=== 📲 Showing notification with conditional custom sound ===");
+
+    final soundFileName = _getSoundFileName(message);
+    final isServiceCompleted = soundFileName == _serviceCompletedSoundFileName;
 
     final androidDetails = AndroidNotificationDetails(
-      'moyo_high_importance_custom',
-      'Moyo Custom Notifications',
-      channelDescription: 'Notifications with custom sound',
+      isServiceCompleted ? 'moyo_service_completed' : 'moyo_high_importance_custom',
+      isServiceCompleted ? 'Service Completed Notifications' : 'Moyo Custom Notifications',
+      channelDescription: isServiceCompleted
+          ? 'Service completion notifications with special sound'
+          : 'Notifications with custom sound',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound(_customSoundFileName),
+      sound: RawResourceAndroidNotificationSound(soundFileName),
       enableVibration: true,
       enableLights: true,
       icon: '@mipmap/ic_launcher',
@@ -191,7 +230,7 @@ class NotificationService {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
-      sound: 'notification_sound.aiff',
+      sound: 'notification_sound.aiff', // iOS fallback - update if needed
     );
 
     final notificationDetails = NotificationDetails(
@@ -207,11 +246,11 @@ class NotificationService {
       payload: jsonEncode(message.data),
     );
 
-    print("✅ Notification shown with custom sound");
+    print("✅ Notification shown with sound: $soundFileName");
   }
 
   static Future<void> showLocalNotificationStatic(RemoteMessage message) async {
-    print("=== 📲 [BACKGROUND] Showing notification with custom sound ===");
+    print("=== 📲 [BACKGROUND] Showing notification with conditional custom sound ===");
 
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
@@ -220,14 +259,19 @@ class NotificationService {
 
     await _flutterLocalNotificationsPlugin.initialize(initSettings);
 
-    // Channel ko phir se create karo (background mein zaruri hai)
-    final androidSound = RawResourceAndroidNotificationSound(
-      _customSoundFileName,
-    );
+    // Get conditional sound and create appropriate channel
+    final soundFileName = _getSoundFileName(message);
+    final isServiceCompleted = soundFileName == _serviceCompletedSoundFileName;
+    final channelId = isServiceCompleted ? 'moyo_service_completed' : 'moyo_high_importance_custom';
+
+    // Create channel for the specific sound
+    final androidSound = RawResourceAndroidNotificationSound(soundFileName);
     final channel = AndroidNotificationChannel(
-      'moyo_high_importance_custom',
-      'Moyo Custom Notifications',
-      description: 'Notifications with custom sound',
+      channelId,
+      isServiceCompleted ? 'Service Completed Notifications' : 'Moyo Custom Notifications',
+      description: isServiceCompleted
+          ? 'Service completion notifications with special sound'
+          : 'Notifications with custom sound',
       importance: Importance.max,
       playSound: true,
       sound: androidSound,
@@ -238,21 +282,22 @@ class NotificationService {
 
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
+        AndroidFlutterLocalNotificationsPlugin
+    >()
         ?.createNotificationChannel(channel);
 
-    // Notification details
+    // Notification details with conditional sound
     final androidDetails = AndroidNotificationDetails(
-      'moyo_high_importance_custom',
-      'Moyo Custom Notifications',
-      channelDescription: 'Notifications with custom sound',
+      channelId,
+      isServiceCompleted ? 'Service Completed Notifications' : 'Moyo Custom Notifications',
+      channelDescription: isServiceCompleted
+          ? 'Service completion notifications with special sound'
+          : 'Notifications with custom sound',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound(_customSoundFileName),
-      // 🔊 Custom sound
+      sound: RawResourceAndroidNotificationSound(soundFileName),
       enableVibration: true,
       enableLights: true,
       icon: '@mipmap/ic_launcher',
@@ -280,10 +325,10 @@ class NotificationService {
       payload: jsonEncode(message.data),
     );
 
-    print("✅ [BACKGROUND] Notification shown with custom sound");
+    print("✅ [BACKGROUND] Notification shown with sound: $soundFileName");
   }
 
-  // Handle Notification Tap with proper navigation
+  // Handle Notification Tap with proper navigation (UNCHANGED)
   static void _handleNotificationTap(String? payload) {
     if (payload == null || payload.isEmpty) {
       print("⚠️ Empty payload received");
@@ -305,10 +350,8 @@ class NotificationService {
 
         if (context != null) {
           if (role == "user") {
-            // ✅ User role - Navigate to UserCustomBottomNav with UserService tab
             _navigateToUserServiceFromNotification(context, serviceId);
           } else if (role == "provider") {
-            // Provider role
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -326,33 +369,31 @@ class NotificationService {
     }
   }
 
-  // ✅ Navigate to UserService tab with serviceId
+  // Navigation methods (UNCHANGED)
   static Future<void> _navigateToUserServiceFromNotification(
-    BuildContext context,
-    String serviceId,
-  ) async {
+      BuildContext context,
+      String serviceId,
+      ) async {
     try {
-      // ✅ First navigate to UserCustomBottomNav with Services tab
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => UserCustomBottomNav(
-            initialTab: 2, // ✅ Services tab index
-            notificationServiceId: serviceId, // ✅ Pass serviceId
+            initialTab: 2,
+            notificationServiceId: serviceId,
           ),
         ),
-        (route) => false, // Remove all previous routes
+            (route) => false,
       );
     } catch (e) {
       print("❌ Error navigating: $e");
     }
   }
 
-  // ================== PERMISSIONS ==================
-
+  // ================== PERMISSIONS & TOKEN MANAGEMENT (UNCHANGED) ==================
   static Future<bool> requestNotificationPermission(
-    BuildContext context,
-  ) async {
+      BuildContext context,
+      ) async {
     print("=== 📢 Requesting Notification Permission ===");
 
     final prefs = await SharedPreferences.getInstance();
@@ -510,8 +551,6 @@ class NotificationService {
     );
   }
 
-  // ================== TOKEN MANAGEMENT ==================
-
   static Future<void> _getAndSaveToken() async {
     try {
       final token = await _firebaseMessaging.getToken();
@@ -559,9 +598,8 @@ class NotificationService {
   }
 
   // ================== TEST METHODS ==================
-
   static Future<void> showTestNotification() async {
-    print("=== 🧪 Showing Test Notification ===");
+    print("=== 🧪 Showing Test Notification (Default Sound) ===");
 
     final androidDetails = AndroidNotificationDetails(
       'moyo_high_importance_custom',
@@ -570,7 +608,7 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound(_customSoundFileName),
+      sound: RawResourceAndroidNotificationSound(_defaultSoundFileName),
       enableVibration: true,
       enableLights: true,
     );
@@ -590,18 +628,56 @@ class NotificationService {
     await _flutterLocalNotificationsPlugin.show(
       DateTime.now().millisecond,
       '🧪 Custom Sound Test',
-      'Agar aapki custom sound sunayi di, toh kaam ho gaya! 🎉',
+      'Agar aapki default custom sound sunayi di! 🎉',
       notificationDetails,
     );
 
-    print("✅ Test notification triggered");
+    print("✅ Test notification triggered (default sound)");
+  }
+
+  // NEW: Test Service Completed notification
+  static Future<void> showServiceCompletedTestNotification() async {
+    print("=== 🧪 Showing Service Completed Test Notification ===");
+
+    final androidDetails = AndroidNotificationDetails(
+      'moyo_service_completed',
+      'Service Completed Notifications',
+      channelDescription: 'Service completion notifications with special sound',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound(_serviceCompletedSoundFileName),
+      enableVibration: true,
+      enableLights: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'notification_sound.aiff',
+    );
+
+    final notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecond,
+      'Service Completed',
+      'Your service has been successfully completed! 🎉',
+      notificationDetails,
+    );
+
+    print("✅ Service Completed test notification triggered");
   }
 
   static Future<void> deleteOldChannel() async {
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
+        AndroidFlutterLocalNotificationsPlugin
+    >()
         ?.deleteNotificationChannel('moyo_high_importance');
 
     print("🗑️ Old channel deleted");

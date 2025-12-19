@@ -21,7 +21,7 @@ class _UserServiceState extends State<UserService>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     // Refresh data when screen is first loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshCurrentTab();
@@ -62,7 +62,7 @@ class _UserServiceState extends State<UserService>
     return TabBarView(
       controller: _tabController,
       children: const [
-        UserPendingService(),
+        //UserPendingService(),
         UserOngoingService(),
         UserCompletedService(),
       ],

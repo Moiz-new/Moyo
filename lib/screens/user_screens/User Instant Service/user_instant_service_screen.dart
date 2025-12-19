@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../constants/colorConstant/color_constant.dart';
 import '../../../providers/user_navigation_provider.dart';
@@ -215,7 +216,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                         _tenureField(context),
 
                       //_preRequisiteIncludesExcludes(context),
-                      _preRequisiteItems(context),
+                      _preRequisiteItems(context, selectedSubcategory),
 
                       _findServiceproviders(
                         context,
@@ -269,18 +270,25 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
 
                             Navigator.pop(context);
 
+                            final prefs = await SharedPreferences.getInstance();
+                            final userId = prefs.getInt('user_id');
                             if (success) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      RequestBroadcastScreen(userId: userId),
+                                ),
+                              );
 
-                              //Navigator.push(context, MaterialPageRoute(builder: (context) => RequestBroadcastScreen(),));
-
-                              context
+                              /* context
                                       .read<UserNavigationProvider>()
                                       .currentIndex =
                                   2;
                               Navigator.pushNamed(
                                 context,
                                 '/UserCustomBottomNav',
-                              );
+                              );*/
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -1290,7 +1298,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
     );
   }
 
- /* Widget _preRequisiteIncludesExcludes(BuildContext context) {
+  /* Widget _preRequisiteIncludesExcludes(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       decoration: BoxDecoration(
@@ -1655,66 +1663,99 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
     );
   }
 
-  Widget _preRequisiteItems(BuildContext context) {
+  Widget _preRequisiteItems(BuildContext context, Subcategory subcategory) {
+    // Create local non-nullable copies
+    final explicitSiteList = subcategory.explicitSite;
+    final implicitSiteList = subcategory.implicitSite;
+
     return Container(
       padding: EdgeInsets.symmetric(vertical: 16),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            spacing: 6,
-            children: [
-              Expanded(
-                child: Text(
-                  "Equipment service providers are required to obtain",
-                  overflow: TextOverflow.visible,
-                  maxLines: 2,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall!.copyWith(color: ColorConstant.black),
+          // Show explicit site section only if data exists
+          if (explicitSiteList!.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              spacing: 6,
+              children: [
+                Expanded(
+                  child: Text(
+                    "Equipment service providers are required to obtain",
+                    overflow: TextOverflow.visible,
+                    maxLines: 2,
+                    style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                      color: ColorConstant.black,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          _buildEquipmentRow(context, ["Apron", "Knife", "Cap"]),
-          SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            spacing: 6,
-            children: [
-              Expanded(
-                child: Text(
-                  "Equipment provided from our side",
-                  overflow: TextOverflow.visible,
-                  maxLines: 2,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall!.copyWith(color: ColorConstant.black),
+              ],
+            ),
+            SizedBox(height: 10),
+            _buildEquipmentRowExplicit(context, explicitSiteList!),
+            SizedBox(height: 16),
+          ],
+
+          // Show implicit site section only if data exists
+          if (implicitSiteList!.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              spacing: 6,
+              children: [
+                Expanded(
+                  child: Text(
+                    "Equipment provided from our side",
+                    overflow: TextOverflow.visible,
+                    maxLines: 2,
+                    style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                      color: ColorConstant.black,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          _buildEquipmentRow(context, ["Utensils", "Plates", "Spoons"]),
+              ],
+            ),
+            SizedBox(height: 10),
+            _buildEquipmentRowImplicit(context, implicitSiteList!),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildEquipmentRow(BuildContext context, List<String> items) {
-    return Row(
+  Widget _buildEquipmentRowExplicit(
+    BuildContext context,
+    List<ExplicitSite> items,
+  ) {
+    return Wrap(
       spacing: 16,
-      mainAxisAlignment: MainAxisAlignment.start,
+      runSpacing: 12,
+      alignment: WrapAlignment.start,
       children: items
-          .map((item) => _buildEquipmentItem(context, item))
+          .map((item) => _buildEquipmentItem(context, item.name, item.image!))
           .toList(),
     );
   }
 
-  Widget _buildEquipmentItem(BuildContext context, String label) {
+  Widget _buildEquipmentRowImplicit(
+    BuildContext context,
+    List<ImplicitSite> items,
+  ) {
+    return Wrap(
+      spacing: 16,
+      runSpacing: 12,
+      alignment: WrapAlignment.start,
+      children: items
+          .map((item) => _buildEquipmentItem(context, item.name, item.image!))
+          .toList(),
+    );
+  }
+
+  Widget _buildEquipmentItem(
+    BuildContext context,
+    String label,
+    String imageUrl,
+  ) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1726,7 +1767,9 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
           height: 38,
           width: 33,
           child: CachedNetworkImage(
-            imageUrl: "https://picsum.photos/200/200",
+            imageUrl: imageUrl.isNotEmpty
+                ? imageUrl
+                : "https://picsum.photos/200/200",
             fit: BoxFit.cover,
             placeholder: (context, url) =>
                 Image.asset('assets/images/moyo_image_placeholder.png'),
@@ -1734,13 +1777,17 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                 Image.asset('assets/images/moyo_image_placeholder.png'),
           ),
         ),
-        Text(
-          label,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 2,
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall!.copyWith(color: ColorConstant.black),
+        Container(
+          width: 60,
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall!.copyWith(color: ColorConstant.black),
+          ),
         ),
       ],
     );

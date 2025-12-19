@@ -1,12 +1,9 @@
-// Complete SubcategoryResponse.dart file - Replace your entire file with this
-
 class SubcategoryResponse {
   final String message;
   final int total;
   final List<Subcategory> subcategories;
 
-
-  SubcategoryResponse( {
+  SubcategoryResponse({
     required this.message,
     required this.total,
     required this.subcategories,
@@ -16,9 +13,10 @@ class SubcategoryResponse {
     return SubcategoryResponse(
       message: json['message'] ?? '',
       total: json['total'] ?? 0,
-      subcategories: (json['subcategories'] as List?)
-          ?.map((item) => Subcategory.fromJson(item))
-          .toList() ??
+      subcategories:
+          (json['subcategories'] as List?)
+              ?.map((item) => Subcategory.fromJson(item))
+              .toList() ??
           [],
     );
   }
@@ -41,6 +39,7 @@ class Subcategory {
   final String updatedAt;
   final List<ExplicitSite> explicitSite;
   final List<ImplicitSite> implicitSite;
+  final bool isCalculate;
   final List<Field> fields;
 
   Subcategory({
@@ -60,6 +59,7 @@ class Subcategory {
     required this.updatedAt,
     required this.explicitSite,
     required this.implicitSite,
+    required this.isCalculate,
     required this.fields,
   });
 
@@ -79,37 +79,34 @@ class Subcategory {
       commission: json['commission'] ?? '0.00',
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
-      explicitSite: (json['explicit_site'] as List?)
-          ?.map((item) => ExplicitSite.fromJson(item))
-          .toList() ??
+      explicitSite:
+          (json['explicit_site'] as List?)
+              ?.map((item) => ExplicitSite.fromJson(item))
+              .toList() ??
           [],
-      implicitSite: (json['implicit_site'] as List?)
-          ?.map((item) => ImplicitSite.fromJson(item))
-          .toList() ??
+      implicitSite:
+          (json['implicit_site'] as List?)
+              ?.map((item) => ImplicitSite.fromJson(item))
+              .toList() ??
           [],
-      fields: (json['fields'] as List?)
-          ?.map((item) => Field.fromJson(item))
-          .toList() ??
+      isCalculate: json['is_calculate'] ?? false,
+      fields:
+          (json['fields'] as List?)
+              ?.map((item) => Field.fromJson(item))
+              .toList() ??
           [],
     );
   }
 }
 
-// Add these new classes to your SubcategoryResponse.dart file
 class ExplicitSite {
   final String name;
   final String image;
 
-  ExplicitSite({
-    required this.name,
-    required this.image,
-  });
+  ExplicitSite({required this.name, required this.image});
 
   factory ExplicitSite.fromJson(Map<String, dynamic> json) {
-    return ExplicitSite(
-      name: json['name'] ?? '',
-      image: json['image'] ?? '',
-    );
+    return ExplicitSite(name: json['name'] ?? '', image: json['image'] ?? '');
   }
 }
 
@@ -117,21 +114,13 @@ class ImplicitSite {
   final String name;
   final String image;
 
-  ImplicitSite({
-    required this.name,
-    required this.image,
-  });
+  ImplicitSite({required this.name, required this.image});
 
   factory ImplicitSite.fromJson(Map<String, dynamic> json) {
-    return ImplicitSite(
-      name: json['name'] ?? '',
-      image: json['image'] ?? '',
-    );
+    return ImplicitSite(name: json['name'] ?? '', image: json['image'] ?? '');
   }
 }
 
-
-// Model for dynamic fields
 class Field {
   final int id;
   final int subcategoryId;
@@ -163,10 +152,8 @@ class Field {
       subcategoryId: json['subcategory_id'] ?? 0,
       fieldName: json['field_name'] ?? '',
       fieldType: json['field_type'] ?? '',
-      options: (json['options'] as List?)
-          ?.map((e) => e.toString())
-          .toList() ??
-          [],
+      options:
+          (json['options'] as List?)?.map((e) => e.toString()).toList() ?? [],
       isRequired: json['is_required'] ?? false,
       isCalculate: json['is_calculate'] ?? false,
       sortOrder: json['sort_order'] ?? 0,

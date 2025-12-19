@@ -370,7 +370,7 @@ class UserServiceDetails extends StatelessWidget {
     return InkWell(
       onTap: onCompleteService,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 5, vertical: 8),
+        padding: EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
           color: ColorConstant.moyoGreen,
           border: Border.all(color: ColorConstant.moyoGreen, width: 1),
@@ -381,14 +381,14 @@ class UserServiceDetails extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           spacing: 8,
           children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
+            Icon(Icons.check_circle, color: Colors.white, size: 15),
             Text(
-              "Complete Service",
+              "Complete",
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.roboto(
-                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                textStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Color(0xFFFFFFFF),
                   fontWeight: FontWeight.w500,
                 ),
@@ -1087,14 +1087,6 @@ class UserServiceDetails extends StatelessWidget {
 
     // Default - empty space
     return SizedBox.shrink();
-  }
-
-  String? _timeLeft(
-    BuildContext context, {
-    String? serviceStartTime,
-    String? duration,
-  }) {
-    return "03 : 29";
   }
 
   Widget _dpNameStatus(context, Widget child) {
