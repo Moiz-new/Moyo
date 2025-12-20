@@ -222,12 +222,9 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                         context,
                         onPress: () async {
                           // ✅ First check if payment method is selected before showing all validation errors
-                          final selectedMethod = provider.getFormValue(
-                            'payment_method',
-                          );
+                          final selectedMethod = provider.getFormValue('payment_method');
 
-                          if (selectedMethod == null ||
-                              selectedMethod.toString().isEmpty) {
+                          if (selectedMethod == null || selectedMethod.toString().isEmpty) {
                             // Show specific payment method error without triggering all validations
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -248,9 +245,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                             _showValidationErrors = true;
                           });
 
-                          if (provider.validateForm(
-                            serviceType: widget.serviceType,
-                          )) {
+                          if (provider.validateForm(serviceType: widget.serviceType)) {
                             showDialog(
                               context: context,
                               barrierDismissible: false,
@@ -261,7 +256,8 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                               ),
                             );
 
-                            final success = await provider.createService(
+                            // ✅ Get the result with service ID, latitude, and longitude
+                            final result = await provider.createService(
                               categoryName: widget.categoryName ?? 'General',
                               subcategoryName: selectedSubcategory.name,
                               billingtype: selectedSubcategory.billingType,
@@ -272,29 +268,28 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
 
                             final prefs = await SharedPreferences.getInstance();
                             final userId = prefs.getInt('user_id');
-                            if (success) {
+
+                            if (result['success'] == true) {
+                              final serviceId = result['serviceId']; // ✅ Extract service ID
+                              final latitude = result['latitude']; // ✅ Extract latitude
+                              final longitude = result['longitude']; // ✅ Extract longitude
+
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      RequestBroadcastScreen(userId: userId),
+                                  builder: (context) => RequestBroadcastScreen(
+                                    userId: userId,
+                                    serviceId: serviceId, // ✅ Pass service ID
+                                    latitude: latitude, // ✅ Pass latitude
+                                    longitude: longitude, // ✅ Pass longitude
+                                  ),
                                 ),
                               );
-
-                              /* context
-                                      .read<UserNavigationProvider>()
-                                      .currentIndex =
-                                  2;
-                              Navigator.pushNamed(
-                                context,
-                                '/UserCustomBottomNav',
-                              );*/
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    provider.error ??
-                                        'Required fields are missing',
+                                    provider.error ?? 'Required fields are missing',
                                   ),
                                   backgroundColor: Colors.red,
                                 ),
@@ -305,8 +300,8 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                               SnackBar(
                                 content: Text(
                                   provider.getValidationError(
-                                        serviceType: widget.serviceType,
-                                      ) ??
+                                    serviceType: widget.serviceType,
+                                  ) ??
                                       'Please fill all required fields',
                                 ),
                                 backgroundColor: Colors.red,
@@ -1671,6 +1666,8 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 16),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Show explicit site section only if data exists
           if (explicitSiteList!.isNotEmpty) ...[
@@ -1681,7 +1678,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    "Equipment service providers are required to obtain",
+                    "Provider Brings",
                     overflow: TextOverflow.visible,
                     maxLines: 2,
                     style: Theme.of(context).textTheme.titleSmall!.copyWith(
@@ -1692,7 +1689,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
               ],
             ),
             SizedBox(height: 10),
-            _buildEquipmentRowExplicit(context, explicitSiteList!),
+            _buildEquipmentRowExplicit(context, explicitSiteList),
             SizedBox(height: 16),
           ],
 
@@ -1705,7 +1702,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    "Equipment provided from our side",
+                    "Customer Provides",
                     overflow: TextOverflow.visible,
                     maxLines: 2,
                     style: Theme.of(context).textTheme.titleSmall!.copyWith(

@@ -21,6 +21,7 @@ import '../user_screens/WidgetProviders/EndWorkOTPDialog.dart';
 import '../user_screens/WidgetProviders/OTPDialog.dart';
 import 'ServiceArrivalProvider.dart';
 import 'StartWorkProvider.dart';
+import 'navigation/FullScreenMapView.dart';
 import 'navigation/ServiceTimerScreen.dart';
 
 class ConfirmProviderServiceDetailsScreen extends StatefulWidget {
@@ -61,12 +62,20 @@ class _ConfirmProviderServiceDetailsScreenState
 
   static const String GOOGLE_MAPS_API_KEY =
       'AIzaSyBqTGBtJYtoRpvJFpF6tls1jcwlbiNcEVI';
-
   @override
   void initState() {
     super.initState();
-    _loadCustomMarkers(); // Add this line
+    _loadCustomMarkers();
     _initializeAndFetchData();
+
+    // Refresh service details every 5 seconds
+    Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (mounted) {
+        _fetchServiceDetails();
+      } else {
+        timer.cancel();
+      }
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final arrivalProvider = Provider.of<ServiceArrivalProvider>(
@@ -189,9 +198,10 @@ class _ConfirmProviderServiceDetailsScreenState
       await _fetchServiceDetails();
       await _fetchLocationDetails();
 
+      // Update location every 5 seconds (reduced from 10s)
       _locationUpdateTimer = Timer.periodic(
-        const Duration(seconds: 10),
-        (timer) => _fetchLocationDetails(),
+        const Duration(seconds: 5),
+            (timer) => _fetchLocationDetails(),
       );
     } catch (e) {
       setState(() {
@@ -200,7 +210,6 @@ class _ConfirmProviderServiceDetailsScreenState
       });
     }
   }
-
   Future<void> _fetchServiceDetails() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -223,8 +232,8 @@ class _ConfirmProviderServiceDetailsScreenState
           );
           providerId =
               payload['provider_id']?.toString() ??
-              payload['id']?.toString() ??
-              payload['sub']?.toString();
+                  payload['id']?.toString() ??
+                  payload['sub']?.toString();
         } else {
           providerId = providerToken;
         }
@@ -253,23 +262,19 @@ class _ConfirmProviderServiceDetailsScreenState
 
       if (response != null) {
         final data = jsonDecode(response);
-        setState(() {
-          _serviceData = data;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'No response received from server';
-          _isLoading = false;
-        });
+
+        // Only update if data has changed
+        if (_serviceData == null || jsonEncode(_serviceData) != jsonEncode(data)) {
+          setState(() {
+            _serviceData = data;
+          });
+        }
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error fetching service details: $e';
-        _isLoading = false;
-      });
+      // Silent fail for background updates
+      print('Service details update: $e');
     }
   }
-
   Future<void> _fetchLocationDetails() async {
     try {
       final requestData = jsonEncode({'service_id': widget.serviceId});
@@ -282,29 +287,26 @@ class _ConfirmProviderServiceDetailsScreenState
 
       if (response != null) {
         final data = jsonDecode(response);
-        setState(() {
-          _locationData = data;
-          _isLoading = false;
-        });
 
-        _checkArrivalDistance();
+        // Only update state if data has changed
+        if (_locationData == null || jsonEncode(_locationData) != jsonEncode(data)) {
+          setState(() {
+            _locationData = data;
+            _isLoading = false;
+          });
 
-        if (_isMapReady) {
-          _setupMap(animate: _markers.isNotEmpty);
+          _checkArrivalDistance();
+
+          if (_isMapReady) {
+            _setupMap(animate: _markers.isNotEmpty);
+          }
         }
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      print('Error fetching location details: $e');
+      // Silent fail for location updates - don't disrupt UI
+      print('Location update: $e');
     }
   }
-
   void _checkArrivalDistance() {
     if (_locationData == null) return;
 
@@ -952,49 +954,97 @@ class _ConfirmProviderServiceDetailsScreenState
                         SizedBox(height: 16.h),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 10.w),
-                          child: Container(
-                            height: 300.h,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(20.r),
-                              child: GoogleMap(
-                                initialCameraPosition: CameraPosition(
-                                  target: LatLng(
-                                    double.parse(
-                                      _locationData!['latitude']?.toString() ??
-                                          '0',
-                                    ),
-                                    double.parse(
-                                      _locationData!['longitude']?.toString() ??
-                                          '0',
+                          child: GestureDetector(
+                            onTap: _openFullScreenMapWithAnimation, // Simple tap to open
+                            child: Container(
+                              height: 300.h,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(20.r),
+                                    child: AbsorbPointer(
+                                      child: GoogleMap(
+                                        initialCameraPosition: CameraPosition(
+                                          target: LatLng(
+                                            double.parse(
+                                              _locationData!['latitude']?.toString() ?? '0',
+                                            ),
+                                            double.parse(
+                                              _locationData!['longitude']?.toString() ?? '0',
+                                            ),
+                                          ),
+                                          zoom: 13,
+                                        ),
+                                        markers: _markers,
+                                        polylines: _polylines,
+                                        circles: _circles,
+                                        myLocationButtonEnabled: false,
+                                        zoomControlsEnabled: false,
+                                        compassEnabled: false,
+                                        mapToolbarEnabled: false,
+                                        myLocationEnabled: false,
+                                        mapType: MapType.normal,
+                                        onMapCreated: (controller) {
+                                          _mapController = controller;
+                                          _isMapReady = true;
+                                          _setupMap();
+                                        },
+                                      ),
                                     ),
                                   ),
-                                  zoom: 13,
-                                ),
-                                markers: _markers,
-                                polylines: _polylines,
-                                circles: _circles,
-                                myLocationButtonEnabled: false,
-                                zoomControlsEnabled: false,
-                                compassEnabled: false,
-                                mapToolbarEnabled: false,
-                                myLocationEnabled: false,
-                                mapType: MapType.normal,
-                                onMapCreated: (controller) {
-                                  _mapController = controller;
-                                  _isMapReady = true;
-                                  _setupMap();
-                                },
+                                  // Tap indicator overlay
+                                  Positioned(
+                                    bottom: 16.h,
+                                    right: 16.w,
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12.w,
+                                        vertical: 8.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.9),
+                                        borderRadius: BorderRadius.circular(8.r),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.2),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.fullscreen,
+                                            size: 18.sp,
+                                            color: Colors.blue,
+                                          ),
+                                          SizedBox(width: 6.w),
+                                          Text(
+                                            'Tap to expand',
+                                            style: TextStyle(
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -1071,7 +1121,7 @@ class _ConfirmProviderServiceDetailsScreenState
                                   height: 56.h,
                                   child: ElevatedButton(
                                     onPressed:
-                                        arrivalProvider.isProcessingArrival
+                                    arrivalProvider.isProcessingArrival
                                         ? null
                                         : _handleArrived,
                                     style: ElevatedButton.styleFrom(
@@ -1086,32 +1136,32 @@ class _ConfirmProviderServiceDetailsScreenState
                                     ),
                                     child: arrivalProvider.isProcessingArrival
                                         ? SizedBox(
-                                            height: 24.h,
-                                            width: 24.w,
-                                            child:
-                                                const CircularProgressIndicator(
-                                                  color: Colors.white,
-                                                  strokeWidth: 2,
-                                                ),
-                                          )
+                                      height: 24.h,
+                                      width: 24.w,
+                                      child:
+                                      const CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
                                         : Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.check_circle,
-                                                size: 28.sp,
-                                              ),
-                                              SizedBox(width: 12.w),
-                                              Text(
-                                                'I\'ve Arrived',
-                                                style: TextStyle(
-                                                  fontSize: 18.sp,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          size: 28.sp,
+                                        ),
+                                        SizedBox(width: 12.w),
+                                        Text(
+                                          'I\'ve Arrived',
+                                          style: TextStyle(
+                                            fontSize: 18.sp,
+                                            fontWeight: FontWeight.bold,
                                           ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1119,7 +1169,6 @@ class _ConfirmProviderServiceDetailsScreenState
                           ),
                         ],
                       ],
-
                       SizedBox(height: 16.h),
                     ],
                   ),
@@ -1128,6 +1177,59 @@ class _ConfirmProviderServiceDetailsScreenState
             ),
     );
   }
+  void _openFullScreenMapWithAnimation() {
+    if (_locationData == null) return;
+
+    final serviceLat = double.tryParse(
+      _locationData!['latitude']?.toString() ?? '0',
+    );
+    final serviceLng = double.tryParse(
+      _locationData!['longitude']?.toString() ?? '0',
+    );
+    final providerLat = double.tryParse(
+      _locationData!['provider']?['latitude']?.toString() ?? '0',
+    );
+    final providerLng = double.tryParse(
+      _locationData!['provider']?['longitude']?.toString() ?? '0',
+    );
+
+    if (serviceLat == null ||
+        serviceLng == null ||
+        providerLat == null ||
+        providerLng == null) {
+      return;
+    }
+
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return FullScreenMapView(
+            providerLat: providerLat,
+            providerLng: providerLng,
+            serviceLat: serviceLat,
+            serviceLng: serviceLng,
+            arrivalTime: _arrivalTime,
+          );
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0); // Slide from bottom
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+
+          var tween = Tween(begin: begin, end: end).chain(
+            CurveTween(curve: curve),
+          );
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
+
 
   Future<void> _showEndWorkOTPDialog() async {
     final result = await showDialog<bool>(

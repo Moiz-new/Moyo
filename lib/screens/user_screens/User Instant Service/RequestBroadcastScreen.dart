@@ -16,9 +16,17 @@ import '../navigation/BookingProvider.dart';
 
 class RequestBroadcastScreen extends StatefulWidget {
   final int? userId;
+  final String? serviceId;
+  final double? latitude;
+  final double? longitude;
 
-  const RequestBroadcastScreen({Key? key, required this.userId})
-    : super(key: key);
+  const RequestBroadcastScreen({
+    Key? key,
+    required this.userId,
+    required this.serviceId,
+    required this.latitude,
+    required this.longitude,
+  }) : super(key: key);
 
   @override
   State<RequestBroadcastScreen> createState() => _RequestBroadcastScreenState();
@@ -36,8 +44,13 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   Set<Marker> _markers = {};
   Set<Circle> _circles = {};
 
-  static const LatLng _userLocation = LatLng(22.7196, 75.8577);
-  static const LatLng _destination = LatLng(22.7532, 75.8937);
+  // CHANGED: Remove static const and make them dynamic
+  // static const LatLng _userLocation = LatLng(22.7196, 75.8577);
+  // static const LatLng _destination = LatLng(22.7532, 75.8937);
+
+  // NEW: Create dynamic LatLng based on widget parameters
+  late final LatLng _userLocation;
+  late final LatLng _destination;
 
   late AnimationController _pulseController;
   late AnimationController _searchController;
@@ -47,22 +60,80 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   Timer? _timer;
   Timer? _zoomTimer;
 
-  List<Provider> _nearbyProviders = [];
+  List<NearbyProvider> _nearbyProviders = [];
   List<AcceptedBid> _acceptedBids = [];
   double _targetZoom = 13.5;
   bool _isZoomingOut = true;
   bool _isDialogShowing = false;
+  bool _isLoadingProviders = true;
 
   final NatsService _natsService = NatsService();
 
   @override
   void initState() {
     super.initState();
+
+    // NEW: Initialize the LatLng values from widget parameters
+    _userLocation = LatLng(
+      widget.latitude ?? 22.7196, // Fallback to default if null
+      widget.longitude ?? 75.8577,
+    );
+
+    // You can set destination as same as user location or calculate an offset
+    // For now, keeping the same destination logic
+    _destination = LatLng(22.7532, 75.8937);
+
     _initializeAnimations();
     _initializeTimers();
-    _generateNearbyProviders();
-    _setupMarkers();
+    _fetchNearbyProviders();
     _subscribeToNats();
+  }
+
+  // Fetch nearby providers from NATS API
+  Future<void> _fetchNearbyProviders() async {
+    try {
+      setState(() {
+        _isLoadingProviders = true;
+      });
+
+      final requestData = {'service_id': int.parse(widget.serviceId ?? '0')};
+
+      debugPrint('📤 Requesting nearby providers: $requestData');
+
+      final response = await _natsService.request(
+        'provider.nearby.location',
+        jsonEncode(requestData),
+        timeout: const Duration(seconds: 5),
+      );
+
+      if (response != null) {
+        final data = jsonDecode(response);
+        debugPrint('📥 Nearby providers response: $data');
+
+        if (data['providers'] != null) {
+          final providers = (data['providers'] as List)
+              .map((p) => NearbyProvider.fromJson(p))
+              .toList();
+
+          setState(() {
+            _nearbyProviders = providers;
+            _isLoadingProviders = false;
+          });
+
+          await _setupMarkers();
+        }
+      } else {
+        debugPrint('❌ No response from NATS API');
+        setState(() {
+          _isLoadingProviders = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching nearby providers: $e');
+      setState(() {
+        _isLoadingProviders = false;
+      });
+    }
   }
 
   void _subscribeToNats() {
@@ -87,7 +158,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
 
       _startBidTimer(acceptedBid.bidId);
 
-      // Show dialog when first bid comes (whether it's the first time or after dialog was dismissed)
+      // Show dialog when first bid comes
       if (!_isDialogShowing && _acceptedBids.length == 1) {
         _showAcceptedProvidersDialog();
       }
@@ -111,7 +182,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
           _bidTimers[bidId] = _bidTimers[bidId]! - 0.1;
           _timerStreamController.add(Map.from(_bidTimers));
         } else {
-          // Time expired, remove the bid
           timer.cancel();
           _countdownTimers[bidId]?.cancel();
 
@@ -122,15 +192,12 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
           });
 
           _timerStreamController.add(Map.from(_bidTimers));
-
-          // Check if dialog should be dismissed when list becomes empty
           _checkAndDismissDialog();
         }
       },
     );
   }
 
-  // New method to check and dismiss dialog when list is empty
   void _checkAndDismissDialog() {
     if (_isDialogShowing && _acceptedBids.isEmpty) {
       _isDialogShowing = false;
@@ -159,8 +226,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
               child: Column(
                 children: [
                   SizedBox(height: MediaQuery.of(context).padding.top + 20),
-
-                  // Cancel button at top-left
                   Row(
                     children: [
                       InkWell(
@@ -208,8 +273,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                       ),
                     ],
                   ),
-
-                  // Header
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Container(
@@ -217,13 +280,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                       decoration: BoxDecoration(
                         color: Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.transparent,
-                            blurRadius: 20,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
                       child: Column(
                         children: [
@@ -248,7 +304,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                       ),
                     ),
                   ),
-
                   Expanded(
                     child: _acceptedBids.isEmpty
                         ? Center(
@@ -335,7 +390,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
         );
       },
     ).then((_) {
-      // Reset flag when dialog is dismissed
       _isDialogShowing = false;
     });
   }
@@ -369,24 +423,17 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                     ? null
                     : () async {
                         try {
-                          // Call the API
                           final response = await bookingProvider.bookProvider(
                             serviceId: bid.serviceId,
                             providerId: bid.provider.id.toString(),
                           );
 
                           if (response != null) {
-                            // Close confirmation dialog
                             Navigator.pop(context);
-
-                            // Close the providers dialog
                             _isDialogShowing = false;
                             Navigator.of(dialogContext).pop();
-
-                            // Close the request broadcast screen
                             Navigator.of(this.context).pop();
 
-                            // Navigate to assigned service details screen
                             Navigator.of(this.context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
@@ -396,7 +443,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                               ),
                             );
 
-                            // Show success message
                             ScaffoldMessenger.of(this.context).showSnackBar(
                               SnackBar(
                                 content: Text(
@@ -410,8 +456,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                             );
                           }
                         } catch (e) {
-                          // Show error message
-                          Navigator.pop(context); // Close dialog
+                          Navigator.pop(context);
                           ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -508,22 +553,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
     });
   }
 
-  void _generateNearbyProviders() {
-    final random = Random();
-    _nearbyProviders = List.generate(8, (i) {
-      return Provider(
-        id: 'P${i + 1}',
-        name: 'Driver ${i + 1}',
-        rating: 4.0 + random.nextDouble(),
-        distance: 0.5 + random.nextDouble() * 4,
-        location: LatLng(
-          _userLocation.latitude + (random.nextDouble() - 0.5) * 0.02,
-          _userLocation.longitude + (random.nextDouble() - 0.5) * 0.02,
-        ),
-      );
-    });
-  }
-
   Future<BitmapDescriptor> _getResizedMarkerIcon(String path, int width) async {
     ByteData data = await rootBundle.load(path);
     ui.Codec codec = await ui.instantiateImageCodec(
@@ -546,10 +575,12 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
       70,
     );
 
+    // UNCHANGED: This will now use the dynamic _userLocation
     markers.add(
       Marker(
         markerId: const MarkerId('pickup'),
         position: _userLocation,
+        // Uses dynamic value
         icon: currentLocationIcon,
         anchor: const Offset(0.5, 0.5),
         infoWindow: const InfoWindow(title: 'Pickup Location'),
@@ -559,24 +590,25 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
     markers.add(
       Marker(
         markerId: const MarkerId('destination'),
-        position: _destination,
+        position: _destination, // Uses dynamic value
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
         infoWindow: const InfoWindow(title: 'Destination'),
       ),
     );
 
+    // Add nearby provider markers
     for (var provider in _nearbyProviders) {
       markers.add(
         Marker(
-          markerId: MarkerId(provider.id),
-          position: provider.location,
+          markerId: MarkerId('provider_${provider.providerId}'),
+          position: LatLng(provider.latitude, provider.longitude),
           icon: BitmapDescriptor.defaultMarkerWithHue(
             BitmapDescriptor.hueAzure,
           ),
           infoWindow: InfoWindow(
-            title: provider.name,
+            title: '${provider.userName} ${provider.lastName}',
             snippet:
-                '${provider.distance.toStringAsFixed(1)} km • ⭐ ${provider.rating.toStringAsFixed(1)}',
+                '${provider.distance.toStringAsFixed(2)} km • Skills: ${provider.skills.join(", ")}',
           ),
         ),
       );
@@ -615,8 +647,9 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
       body: Stack(
         children: [
           GoogleMap(
-            initialCameraPosition: const CameraPosition(
-              target: _userLocation,
+            // CHANGED: Use dynamic _userLocation
+            initialCameraPosition: CameraPosition(
+              target: _userLocation, // Uses dynamic value
               zoom: 13.5,
             ),
             markers: _markers,
@@ -778,7 +811,9 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                                   ),
                                 ),
                                 Text(
-                                  '${_nearbyProviders.length} nearby drivers',
+                                  _isLoadingProviders
+                                      ? 'Loading...'
+                                      : '${_nearbyProviders.length} nearby providers',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey,
@@ -1003,6 +1038,59 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   }
 }
 
+// New NearbyProvider model class for API response
+class NearbyProvider {
+  final int providerId;
+  final int userId;
+  final int workRadius;
+  final bool notified;
+  final String deviceToken;
+  final String userName;
+  final String lastName;
+  final bool isChecked;
+  final double latitude;
+  final double longitude;
+  final List<String> skills;
+  final double distance;
+
+  NearbyProvider({
+    required this.providerId,
+    required this.userId,
+    required this.workRadius,
+    required this.notified,
+    required this.deviceToken,
+    required this.userName,
+    required this.lastName,
+    required this.isChecked,
+    required this.latitude,
+    required this.longitude,
+    required this.skills,
+    required this.distance,
+  });
+
+  factory NearbyProvider.fromJson(Map<String, dynamic> json) {
+    return NearbyProvider(
+      providerId: json['provider_id'] ?? 0,
+      userId: json['user_id'] ?? 0,
+      workRadius: json['work_radius'] ?? 0,
+      notified: json['notified'] ?? false,
+      deviceToken: json['device_token'] ?? '',
+      userName: json['user_name'] ?? '',
+      lastName: json['last_name'] ?? '',
+      isChecked: json['is_checked'] ?? false,
+      latitude: double.tryParse(json['latitude']?.toString() ?? '0') ?? 0.0,
+      longitude: double.tryParse(json['longitude']?.toString() ?? '0') ?? 0.0,
+      skills:
+          (json['skills'] as List<dynamic>?)
+              ?.map((s) => s.toString())
+              .toList() ??
+          [],
+      distance: (json['distance'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
+// Existing classes remain the same
 class AcceptedBid {
   final String serviceId;
   final String bidId;
@@ -1114,20 +1202,4 @@ class UserData {
       emailVerified: json['email_verified'] ?? false,
     );
   }
-}
-
-class Provider {
-  final String id;
-  final String name;
-  final double rating;
-  final double distance;
-  final LatLng location;
-
-  Provider({
-    required this.id,
-    required this.name,
-    required this.rating,
-    required this.distance,
-    required this.location,
-  });
 }

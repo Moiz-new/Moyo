@@ -579,8 +579,7 @@ class UserInstantServiceProvider with ChangeNotifier {
   }
 
   // ---------- Create service ----------
-
-  Future<bool> createService({
+  Future<Map<String, dynamic>> createService({
     required String categoryName,
     required String billingtype,
     required String subcategoryName,
@@ -589,7 +588,7 @@ class UserInstantServiceProvider with ChangeNotifier {
     if (!validateForm(serviceType: serviceType)) {
       _error = getValidationError(serviceType: serviceType);
       notifyListeners();
-      return false;
+      return {'success': false, 'serviceId': null, 'latitude': null, 'longitude': null};
     }
 
     _isCreatingService = true;
@@ -604,8 +603,8 @@ class UserInstantServiceProvider with ChangeNotifier {
           if (field.fieldType == 'number') {
             dynamicFields[field.fieldName] =
                 int.tryParse(value.toString()) ??
-                double.tryParse(value.toString()) ??
-                value;
+                    double.tryParse(value.toString()) ??
+                    value;
           } else {
             dynamicFields[field.fieldName] = value.toString();
           }
@@ -620,7 +619,7 @@ class UserInstantServiceProvider with ChangeNotifier {
         _error = 'Authentication token not found. Please login again.';
         _isCreatingService = false;
         notifyListeners();
-        return false;
+        return {'success': false, 'serviceId': null, 'latitude': null, 'longitude': null};
       }
 
       final double budgetValue =
@@ -750,7 +749,12 @@ class UserInstantServiceProvider with ChangeNotifier {
 
         _isCreatingService = false;
         notifyListeners();
-        return true;
+        return {
+          'success': true,
+          'serviceId': serviceId,
+          'latitude': _latitude ?? 22.7196,
+          'longitude': _longitude ?? 75.8577,
+        };
       } else {
         _error = response?['message']?.toString() ?? 'Fields Are Required';
 
@@ -773,7 +777,7 @@ class UserInstantServiceProvider with ChangeNotifier {
 
         _isCreatingService = false;
         notifyListeners();
-        return false;
+        return {'success': false, 'serviceId': null, 'latitude': null, 'longitude': null};
       }
     } catch (e) {
       _error = 'An error occurred: $e';
@@ -797,7 +801,7 @@ class UserInstantServiceProvider with ChangeNotifier {
 
       _isCreatingService = false;
       notifyListeners();
-      return false;
+      return {'success': false, 'serviceId': null, 'latitude': null, 'longitude': null};
     }
   }
 

@@ -32,12 +32,19 @@ class ServiceArrivalProvider extends ChangeNotifier {
 
   // Getters
   int get remainingSeconds => _remainingSeconds;
+
   bool get isTimerActive => _isTimerActive;
+
   bool get hasArrived => _hasArrived;
+
   bool get canStartWork => _canStartWork;
+
   bool get isProcessingArrival => _isProcessingArrival;
+
   String? get errorMessage => _errorMessage;
+
   String? get currentStatus => _currentStatus;
+
   Map<String, dynamic>? get cachedServiceData => _cachedServiceData;
 
   String get formattedTime {
@@ -132,14 +139,11 @@ class ServiceArrivalProvider extends ChangeNotifier {
     // Cancel existing timers
     _stopAutoRefresh();
 
-    // 1. Poll backend every 15 seconds for status changes
+    // Poll backend every 3 seconds for status changes (reduced from 15s)
     _statusCheckTimer = Timer.periodic(
-      const Duration(seconds: 15),
-          (timer) => _checkServiceStatus(serviceId),
+      const Duration(seconds: 3),
+      (timer) => _checkServiceStatus(serviceId),
     );
-
-    // 2. Listen to NATS for real-time updates (more efficient)
-    _setupNatsListener(serviceId);
   }
 
   // Stop all auto-refresh timers
@@ -153,6 +157,9 @@ class ServiceArrivalProvider extends ChangeNotifier {
   // Check service status via API
   Future<void> _checkServiceStatus(String serviceId) async {
     try {
+      // Prevent multiple concurrent requests
+      if (_isProcessingArrival) return;
+
       final prefs = await SharedPreferences.getInstance();
       final providerToken = prefs.getString('provider_auth_token');
 
@@ -165,7 +172,8 @@ class ServiceArrivalProvider extends ChangeNotifier {
           final payload = json.decode(
             utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
           );
-          providerId = payload['provider_id']?.toString() ??
+          providerId =
+              payload['provider_id']?.toString() ??
               payload['id']?.toString() ??
               payload['sub']?.toString();
         } else {
@@ -193,48 +201,11 @@ class ServiceArrivalProvider extends ChangeNotifier {
         _updateServiceData(data);
       }
     } catch (e) {
-      print('Error checking service status: $e');
+      // Silent fail - don't show errors to user for background polling
+      print('Background status check: $e');
     }
   }
 
-  // Setup NATS listener for real-time updates
-  void _setupNatsListener(String serviceId) {
-    // Poll NATS subscription every 5 seconds
-    _natsListenerTimer = Timer.periodic(
-      const Duration(seconds: 5),
-          (timer) => _listenForNatsUpdates(serviceId),
-    );
-  }
-
-  // Listen for NATS updates
-  Future<void> _listenForNatsUpdates(String serviceId) async {
-    try {
-      if (!_natsService.isConnected) {
-        await _natsService.connect(
-          url: 'nats://api.moyointernational.com:4222',
-        );
-      }
-
-      // Subscribe to service-specific updates
-      final requestData = jsonEncode({'service_id': serviceId});
-
-      final response = await _natsService.request(
-        'service.updates.$serviceId',
-        requestData,
-        timeout: const Duration(seconds: 3),
-      );
-
-      if (response != null) {
-        final data = jsonDecode(response);
-        _updateServiceData(data);
-      }
-    } catch (e) {
-      // Silent fail for NATS updates (fallback to polling)
-      print('NATS update check: $e');
-    }
-  }
-
-  // Update service data and notify listeners
   void _updateServiceData(Map<String, dynamic> newData) {
     bool hasChanges = false;
 
@@ -268,9 +239,13 @@ class ServiceArrivalProvider extends ChangeNotifier {
       hasChanges = true;
     }
 
-    // Cache service data
-    if (_cachedServiceData == null ||
-        jsonEncode(_cachedServiceData) != jsonEncode(newData)) {
+    // Cache service data - only update if different
+    final newDataString = jsonEncode(newData);
+    final oldDataString = _cachedServiceData != null
+        ? jsonEncode(_cachedServiceData)
+        : '';
+
+    if (newDataString != oldDataString) {
       _cachedServiceData = newData;
       hasChanges = true;
     }

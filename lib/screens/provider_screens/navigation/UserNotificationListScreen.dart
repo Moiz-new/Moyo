@@ -318,17 +318,6 @@ class _UserNotificationListScreenState
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (notification['data'] != null) ...[
-                              SizedBox(height: 8.sp),
-                              Text(
-                                'Distance: ${(notification['data']['distance_km'] ?? 0).toStringAsFixed(1)} km',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: ColorConstant.moyoOrange,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                         trailing: isRead
