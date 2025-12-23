@@ -13,6 +13,7 @@ import '../../SubCategory/SelectFromHomeScreen.dart';
 import '../../user_screens/Home/CategoryProvider.dart';
 import '../../Skills/ProviderMySkillScreen.dart';
 import '../../SubCategory/SubcategoryScreen.dart';
+import '../../user_screens/Home/ProviderCategoryProvider.dart';
 import '../CompletedServicesScreen.dart';
 import 'AvailabilityProvider.dart';
 
@@ -28,7 +29,7 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CategoryProvider>().fetchCategories();
+      context.read<ProviderCategoryProvider>().fetchCategories(context: context);
       context.read<CarouselProvider>().fetchCarousels(type: 'provider');
       context.read<AvailabilityProvider>().initializeAvailability();
     });
@@ -409,7 +410,7 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
             ),
             SizedBox(height: 10),
 
-            Consumer<CategoryProvider>(
+            Consumer<ProviderCategoryProvider>(
               builder: (context, categoryProvider, child) {
                 if (categoryProvider.isLoading) {
                   return Center(
@@ -441,7 +442,9 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                           SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: () {
-                              categoryProvider.fetchCategories();
+                              categoryProvider.fetchCategories(
+                                context: context,
+                              );
                             },
                             child: Text('Retry'),
                           ),
@@ -490,7 +493,7 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
 
 class _ProviderCategoryCard extends StatelessWidget {
   final dynamic category;
-  final CategoryProvider categoryProvider;
+  final ProviderCategoryProvider categoryProvider;
 
   const _ProviderCategoryCard({
     required this.category,

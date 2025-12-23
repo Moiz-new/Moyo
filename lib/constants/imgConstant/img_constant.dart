@@ -1,6 +1,6 @@
 class ImageConstant {
   //backGroundImg
-  static const String loginBgImg = 'assets/backGroundImg/loginBg.png';
+  static const String loginBgImg = 'assets/images/Cover.jpg';
 
   //BottomTabBarImg
 

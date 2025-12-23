@@ -8,6 +8,8 @@ import 'dart:convert';
 
 import '../../../constants/colorConstant/color_constant.dart';
 import '../../../providers/provider_navigation_provider.dart';
+import '../../../widgets/AdminDeletedAccountDialog.dart';
+import '../../../widgets/BlockedDialog.dart';
 import '../../commonOnboarding/splashScreen/splash_screen_provider.dart';
 
 enum Mode { customer, provider }
@@ -52,6 +54,32 @@ class _UserGoToProviderState extends State<UserGoToProvider> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = json.decode(response.body);
         print('Device token update message: ${responseData['message']}');
+      }else if (response.statusCode == 403) {
+        // Show modern blocked dialog
+        if (context.mounted) {
+          await BlockedDialog.show(context);
+
+          if (context.mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+                  (route) => false,
+            );
+          }
+        }
+      } else if (response.statusCode == 401) {
+        // Show modern blocked dialog
+        if (context.mounted) {
+          await AdminDeletedAccountDialog.show(context);
+
+          if (context.mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+                  (route) => false,
+            );
+          }
+        }
       } else {
         print('Failed to update device token: ${response.body}');
       }

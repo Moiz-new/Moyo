@@ -30,7 +30,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _loadProfile() async {
     final provider = context.read<UserProfileProvider>();
-    await provider.loadUserProfile();
+    await provider.loadUserProfile(context);
   }
 
   @override
@@ -52,7 +52,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => profileProvider.refreshProfile(),
+            onRefresh: () => profileProvider.refreshProfile(context),
             color: ColorConstant.moyoOrange,
             child: SingleChildScrollView(
               physics: AlwaysScrollableScrollPhysics(),
@@ -84,7 +84,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           '/editProfile',
                         );
                         if (result == true) {
-                          profileProvider.refreshProfile();
+                          profileProvider.refreshProfile(context);
                         }
                       },
                     ),
@@ -125,7 +125,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
-                provider.loadUserProfile();
+                provider.loadUserProfile(context);
               },
               icon: Icon(Icons.refresh),
               label: Text('Retry'),

@@ -9,9 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/colorConstant/color_constant.dart';
 import '../../widgets/ProviderRatingDialog.dart';
 
-// Import your rating dialog file
-// import 'path_to_rating_dialog.dart';
-
 class CompletedServicesScreen extends StatefulWidget {
   @override
   _CompletedServicesScreenState createState() =>
@@ -22,6 +19,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
   List<dynamic> services = [];
   bool isLoading = true;
   String? token;
+  Set<int> expandedCards = {};
 
   @override
   void initState() {
@@ -50,7 +48,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
         },
       );
 
-      print(response.body);
+      print(token);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -95,7 +93,6 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
     );
 
     if (result == true) {
-      // Rating submitted successfully
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -109,10 +106,18 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-
-      // Optionally refresh the list
       await _fetchCompletedServices();
     }
+  }
+
+  void _toggleExpand(int index) {
+    setState(() {
+      if (expandedCards.contains(index)) {
+        expandedCards.remove(index);
+      } else {
+        expandedCards.add(index);
+      }
+    });
   }
 
   @override
@@ -142,7 +147,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 itemCount: services.length,
                 itemBuilder: (context, index) =>
-                    _buildServiceCard(services[index]),
+                    _buildServiceCard(services[index], index),
               ),
             ),
     );
@@ -200,9 +205,11 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
     );
   }
 
-  Widget _buildServiceCard(service) {
+  Widget _buildServiceCard(service, int index) {
     final customer = service['customer'];
     final dynamicFields = service['dynamic_fields'] ?? {};
+    final isExpanded = expandedCards.contains(index);
+    final ratingGiven = service['rating_given'] ?? false; // Get rating status
 
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
@@ -219,302 +226,325 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
       ),
       child: Column(
         children: [
-          // Header
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              color: ColorConstant.moyoGreen,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+          // Header - Always visible
+          InkWell(
+            onTap: () => _toggleExpand(index),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(16.r),
+              bottom: isExpanded ? Radius.zero : Radius.circular(16.r),
             ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20.r,
-                  backgroundColor: ColorConstant.white,
-                  child: Icon(
-                    Icons.verified,
-                    color: ColorConstant.moyoGreen,
-                    size: 20.sp,
-                  ),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: ColorConstant.moyoGreen,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(16.r),
+                  bottom: isExpanded ? Radius.zero : Radius.circular(16.r),
                 ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20.r,
+                    backgroundColor: ColorConstant.white,
+                    child: Icon(
+                      Icons.verified,
+                      color: ColorConstant.moyoGreen,
+                      size: 20.sp,
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${service['title'] ?? 'Service'}',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w700,
+                            color: ColorConstant.white,
+                          ),
+                        ),
+                        Text(
+                          'Completed • ${service['ended_at'] != null ? _formatDate(service['ended_at']) : ''}',
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            color: ColorConstant.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 6.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: ColorConstant.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20.r),
+                    ),
+                    child: Text(
+                      '₹${service['budget'] ?? '0'}',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: ColorConstant.white,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: ColorConstant.white,
+                    size: 24.sp,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Expandable Content
+          AnimatedCrossFade(
+            firstChild: SizedBox.shrink(),
+            secondChild: Padding(
+              padding: EdgeInsets.all(20.w),
+              child: Column(
+                children: [
+                  // Customer Info
+                  Row(
                     children: [
-                      Text(
-                        '${service['title'] ?? 'Service'}',
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.w700,
-                          color: ColorConstant.white,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(24.r),
+                        child: customer['image'] != null
+                            ? Image.network(
+                          customer['image'],
+                          width: 48.w,
+                          height: 48.h,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 48.w,
+                            height: 48.h,
+                            color: ColorConstant.buttonBg,
+                            child: Icon(
+                              Icons.person,
+                              size: 24.sp,
+                              color: ColorConstant.darkPrimary,
+                            ),
+                          ),
+                        )
+                            : Container(
+                          width: 48.w,
+                          height: 48.h,
+                          color: ColorConstant.buttonBg,
+                          child: Icon(
+                            Icons.person,
+                            size: 24.sp,
+                            color: ColorConstant.darkPrimary,
+                          ),
                         ),
                       ),
-                      Text(
-                        'Completed • ${service['ended_at'] != null ? _formatDate(service['ended_at']) : ''}',
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          color: ColorConstant.white.withOpacity(0.9),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${customer['firstname'] ?? ''} ${customer['lastname'] ?? ''}',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                                color: ColorConstant.onSurface,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 12.w,
-                    vertical: 6.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: ColorConstant.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20.r),
-                  ),
-                  child: Text(
-                    '₹${service['budget'] ?? '0'}',
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: ColorConstant.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          // Content
-          Padding(
-            padding: EdgeInsets.all(20.w),
-            child: Column(
-              children: [
-                // Customer Info
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(24.r),
-                      child: customer['image'] != null
-                          ? Image.network(
-                              customer['image'],
-                              width: 48.w,
-                              height: 48.h,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 48.w,
-                                height: 48.h,
-                                color: ColorConstant.buttonBg,
-                                child: Icon(
-                                  Icons.person,
-                                  size: 24.sp,
-                                  color: ColorConstant.darkPrimary,
-                                ),
-                              ),
-                            )
-                          : Container(
-                              width: 48.w,
-                              height: 48.h,
-                              color: ColorConstant.buttonBg,
-                              child: Icon(
-                                Icons.person,
-                                size: 24.sp,
-                                color: ColorConstant.darkPrimary,
-                              ),
-                            ),
+                  SizedBox(height: 16.h),
+
+                  // Service Details
+                  _buildDetailRow(
+                    Icons.location_on_outlined,
+                    'Location',
+                    service['location'] ?? '',
+                  ),
+                  SizedBox(height: 12.h),
+                  _buildDetailRow(
+                    Icons.schedule_outlined,
+                    'Duration',
+                    '${service['duration_value'] ?? 0} ${service['duration_unit'] ?? 'hr'}',
+                  ),
+                  SizedBox(height: 12.h),
+                  _buildDetailRow(
+                    Icons.access_time_outlined,
+                    'Scheduled',
+                    _formatDateTime(
+                      service['schedule_date'],
+                      service['schedule_time'],
                     ),
-                    SizedBox(width: 12.w),
-                    Expanded(
+                  ),
+
+                  if (dynamicFields.isNotEmpty) ...[
+                    SizedBox(height: 16.h),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        color: ColorConstant.moyoOrangeFade,
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: ColorConstant.buttonBg),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '${customer['firstname'] ?? ''} ${customer['lastname'] ?? ''}',
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                              color: ColorConstant.onSurface,
+                          ...dynamicFields.entries.map<Widget>((entry) {
+                            return Padding(
+                              padding: EdgeInsets.symmetric(vertical: 4.h),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.circle,
+                                    size: 6.sp,
+                                    color: ColorConstant.moyoGreen,
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${entry.key}:',
+                                          style: TextStyle(
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: ColorConstant.onSurface,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${entry.value}',
+                                          style: TextStyle(
+                                            fontSize: 14.sp,
+                                            color: ColorConstant.onSurface,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  // Rating Section - Only show if rating NOT given
+                  if (!ratingGiven) ...[
+                    SizedBox(height: 20.h),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: Color(0xFFFFA726).withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8.w),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                                child: Icon(
+                                  Icons.star_rate_rounded,
+                                  color: Color(0xFFFFA726),
+                                  size: 24.sp,
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Rate Your Experience',
+                                      style: TextStyle(
+                                        fontSize: 15.sp,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1D1B20),
+                                      ),
+                                    ),
+                                    Text(
+                                      'Share your feedback about this service',
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        color: Color(0xFF7A7A7A),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12.h),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _showRatingDialog(service),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFFFFA726),
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 12.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.r),
+                                ),
+                                elevation: 2,
+                              ),
+                              icon: Icon(Icons.rate_review, size: 18.sp),
+                              label: Text(
+                                'Rate Customer',
+                                style: TextStyle(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                ),
-
-                SizedBox(height: 16.h),
-
-                // Service Details
-                _buildDetailRow(
-                  Icons.location_on_outlined,
-                  'Location',
-                  service['location'] ?? '',
-                ),
-                SizedBox(height: 12.h),
-                _buildDetailRow(
-                  Icons.schedule_outlined,
-                  'Duration',
-                  '${service['duration_value'] ?? 0} ${service['duration_unit'] ?? 'hr'}',
-                ),
-                SizedBox(height: 12.h),
-                _buildDetailRow(
-                  Icons.access_time_outlined,
-                  'Scheduled',
-                  _formatDateTime(
-                    service['schedule_date'],
-                    service['schedule_time'],
-                  ),
-                ),
-
-                // Dynamic Fields Section
-                if (dynamicFields.isNotEmpty) ...[
-                  SizedBox(height: 16.h),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(16.w),
-                    decoration: BoxDecoration(
-                      color: ColorConstant.moyoOrangeFade,
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: ColorConstant.buttonBg),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...dynamicFields.entries.map<Widget>((entry) {
-                          return Padding(
-                            padding: EdgeInsets.symmetric(vertical: 4.h),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.circle,
-                                  size: 6.sp,
-                                  color: ColorConstant.moyoGreen,
-                                ),
-                                SizedBox(width: 8.w),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${entry.key}:',
-                                        style: TextStyle(
-                                          fontSize: 13.sp,
-                                          fontWeight: FontWeight.w600,
-                                          color: ColorConstant.onSurface,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${entry.value}',
-                                        style: TextStyle(
-                                          fontSize: 14.sp,
-                                          color: ColorConstant.onSurface,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ],
-                    ),
-                  ),
                 ],
-
-                // Rating Section
-                SizedBox(height: 20.h),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(16.w),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(
-                      color: Color(0xFFFFA726).withOpacity(0.3),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8.w),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8.r),
-                            ),
-                            child: Icon(
-                              Icons.star_rate_rounded,
-                              color: Color(0xFFFFA726),
-                              size: 24.sp,
-                            ),
-                          ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Rate Your Experience',
-                                  style: TextStyle(
-                                    fontSize: 15.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1D1B20),
-                                  ),
-                                ),
-                                Text(
-                                  'Share your feedback about this service',
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: Color(0xFF7A7A7A),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12.h),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () => _showRatingDialog(service),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFFFA726),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
-                            elevation: 2,
-                          ),
-                          icon: Icon(Icons.rate_review, size: 18.sp),
-                          label: Text(
-                            'Rate Customer',
-                            style: TextStyle(
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: Duration(milliseconds: 300),
           ),
         ],
       ),
     );
   }
-
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Row(
       children: [

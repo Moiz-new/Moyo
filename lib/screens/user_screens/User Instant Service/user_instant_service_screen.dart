@@ -196,6 +196,16 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                               isRequired: field.isRequired,
                               fieldName: field.fieldName,
                             );
+                          } else if (field.fieldType == 'textarea') {
+                            return _moyoTextField(
+                              context,
+                              title: field.fieldName,
+                              isRequired: field.isRequired,
+                              fieldName: field.fieldName,
+                              maxLines: 5,
+                              // Multiple lines for textarea
+                              keyboardType: TextInputType.multiline,
+                            );
                           }
                           return SizedBox.shrink();
                         }).toList(),
@@ -222,9 +232,12 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                         context,
                         onPress: () async {
                           // ✅ First check if payment method is selected before showing all validation errors
-                          final selectedMethod = provider.getFormValue('payment_method');
+                          final selectedMethod = provider.getFormValue(
+                            'payment_method',
+                          );
 
-                          if (selectedMethod == null || selectedMethod.toString().isEmpty) {
+                          if (selectedMethod == null ||
+                              selectedMethod.toString().isEmpty) {
                             // Show specific payment method error without triggering all validations
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -245,7 +258,9 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                             _showValidationErrors = true;
                           });
 
-                          if (provider.validateForm(serviceType: widget.serviceType)) {
+                          if (provider.validateForm(
+                            serviceType: widget.serviceType,
+                          )) {
                             showDialog(
                               context: context,
                               barrierDismissible: false,
@@ -270,17 +285,22 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                             final userId = prefs.getInt('user_id');
 
                             if (result['success'] == true) {
-                              final serviceId = result['serviceId']; // ✅ Extract service ID
-                              final latitude = result['latitude']; // ✅ Extract latitude
-                              final longitude = result['longitude']; // ✅ Extract longitude
+                              final serviceId =
+                                  result['serviceId']; // ✅ Extract service ID
+                              final latitude =
+                                  result['latitude']; // ✅ Extract latitude
+                              final longitude =
+                                  result['longitude']; // ✅ Extract longitude
 
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => RequestBroadcastScreen(
                                     userId: userId,
-                                    serviceId: serviceId, // ✅ Pass service ID
-                                    latitude: latitude, // ✅ Pass latitude
+                                    serviceId: serviceId,
+                                    // ✅ Pass service ID
+                                    latitude: latitude,
+                                    // ✅ Pass latitude
                                     longitude: longitude, // ✅ Pass longitude
                                   ),
                                 ),
@@ -289,7 +309,8 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    provider.error ?? 'Required fields are missing',
+                                    provider.error ??
+                                        'Required fields are missing',
                                   ),
                                   backgroundColor: Colors.red,
                                 ),
@@ -300,8 +321,8 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                               SnackBar(
                                 content: Text(
                                   provider.getValidationError(
-                                    serviceType: widget.serviceType,
-                                  ) ??
+                                        serviceType: widget.serviceType,
+                                      ) ??
                                       'Please fill all required fields',
                                 ),
                                 backgroundColor: Colors.red,
@@ -1093,6 +1114,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
     bool isRequired = false,
     String? fieldName,
     TextInputType? keyboardType,
+    int? maxLines,
   }) {
     return Column(
       spacing: 6,

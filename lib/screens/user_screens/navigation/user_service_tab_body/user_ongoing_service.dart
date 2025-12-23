@@ -26,7 +26,6 @@ class _UserOngoingServiceState extends State<UserOngoingService> {
     final userId = prefs.getInt('user_id');
 
     if (userId != null) {
-      // Initialize NATS subscription when landing on this screen
       context.read<ServiceProvider>().initializeServiceNatsSubscription(userId);
     }
   }

@@ -141,7 +141,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final success = await editProvider.updateProfile();
 
     if (success && mounted) {
-      await context.read<UserProfileProvider>().refreshProfile();
+      await context.read<UserProfileProvider>().refreshProfile(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

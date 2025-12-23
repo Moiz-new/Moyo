@@ -33,6 +33,7 @@ class UserServiceDetails extends StatelessWidget {
 
   final String? description;
   final bool isProvider;
+  final bool userRatingGiven;
 
   final VoidCallback? onAccept;
   final VoidCallback? onReBid;
@@ -49,6 +50,7 @@ class UserServiceDetails extends StatelessWidget {
     this.date,
     this.pin,
     this.providerPhone,
+    this.userRatingGiven = false,
     this.dp,
     this.name,
     this.rating,
@@ -587,11 +589,11 @@ class UserServiceDetails extends StatelessWidget {
             if (statusLower == "assigned" || statusLower == "arrived")
               _cancelTheService(context),
 
-            // Task complete - show for 'started' or 'in_progress' status
             if (statusLower == "started") _taskComplete(context),
 
             // Rate service - show for 'completed' status
-            if (statusLower == "completed") _rateService(context),
+            if (statusLower == "completed" && !userRatingGiven)
+              _rateService(context),
           ],
         ),
       ),

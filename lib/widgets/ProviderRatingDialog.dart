@@ -68,7 +68,7 @@ class RatingAPI {
         'service_id': serviceId,
         'rating': rating,
         'review': review.trim(),
-        'rated_to_provider_id': providerId.toString(),
+        'rated_to_user_id': providerId.toString(),
       };
 
       print('📤 Submitting rating to: $base_url/bid/api/user/rating/create');

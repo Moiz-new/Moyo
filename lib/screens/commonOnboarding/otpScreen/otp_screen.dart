@@ -1,4 +1,4 @@
-// otp_screen.dart - WITH AUTO-FILL FEATURE
+// otp_screen.dart - WITH AUTO-FILL FEATURE AND FIXED KEYBOARD HANDLING
 import 'package:first_flutter/baseControllers/NavigationController/navigation_controller.dart';
 import 'package:first_flutter/constants/imgConstant/img_constant.dart';
 import 'package:first_flutter/constants/utils/app_text_style.dart';
@@ -25,7 +25,7 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
   final List<TextEditingController> _controllers = List.generate(
     6,
-    (_) => TextEditingController(),
+        (_) => TextEditingController(),
   );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
@@ -103,6 +103,7 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: Colors.grey.shade300, width: 1.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -226,7 +227,7 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
       print('=== Setting up notifications ===');
 
       final permissionGranted =
-          await NotificationService.requestNotificationPermission(context);
+      await NotificationService.requestNotificationPermission(context);
 
       if (permissionGranted) {
         print('✓ Notification permission granted');
@@ -260,218 +261,223 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
       Navigator.pushNamedAndRemoveUntil(
         context,
         "/UserCustomBottomNav",
-        (route) => false,
+            (route) => false,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
-      builder: (context, child) {
-        return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () {
-                navigationService.pop();
-              },
-            ),
-          ),
-          extendBodyBehindAppBar: true,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(ImageConstant.loginBgImg, fit: BoxFit.cover),
-              SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.15,
-                      ),
-                      Image.asset(
-                        "assets/icons/app_icon_radius.png.png",
-                        width: 100.w,
-                        height: 100.h,
-                      ),
-                      SizedBox(height: 24.h),
-                      Text(
-                        "Enter OTP",
-                        style: AppTextStyle.robotoBold.copyWith(
-                          fontSize: 28.sp,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 12.h),
-                      Text(
-                        "A 6 digit code has been sent to",
-                        style: AppTextStyle.robotoRegular.copyWith(
-                          fontSize: 15.sp,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 6.h),
-                      Text(
-                        widget.phoneNumber ?? '',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 40.h),
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
 
-                      // OTP fields with auto-fill support
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          6,
-                          (index) => Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 2.w),
-                            child: _buildOtpField(context, index),
+      ),
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(ImageConstant.loginBgImg, fit: BoxFit.cover),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top -
+                      MediaQuery.of(context).padding.bottom,
+                ),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Spacer(),
+                        Image.asset(
+                          "assets/icons/app_icon_radius.png.png",
+                          width: 100.w,
+                          height: 100.h,
+                        ),
+                        SizedBox(height: 24.h),
+                        Text(
+                          "Enter OTP",
+                          style: AppTextStyle.robotoBold.copyWith(
+                            fontSize: 28.sp,
+                            color: Colors.black,
                           ),
                         ),
-                      ),
+                        SizedBox(height: 12.h),
+                        Text(
+                          "A 6 digit code has been sent to",
+                          style: AppTextStyle.robotoRegular.copyWith(
+                            fontSize: 15.sp,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        SizedBox(height: 6.h),
+                        Text(
+                          widget.phoneNumber ?? '',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 40.h),
 
-                      SizedBox(height: 20.h),
+                        // OTP fields with auto-fill support
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            6,
+                                (index) => Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 2.w),
+                              child: _buildOtpField(context, index),
+                            ),
+                          ),
+                        ),
 
-                      Consumer<OtpScreenProvider>(
-                        builder: (context, provider, _) {
-                          if (provider.errorMessage != null) {
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: 16.h),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 16.w,
-                                  vertical: 12.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                  border: Border.all(color: Colors.red),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.error_outline,
-                                      color: Colors.red,
-                                      size: 20,
-                                    ),
-                                    SizedBox(width: 8.w),
-                                    Expanded(
-                                      child: Text(
-                                        provider.errorMessage!,
-                                        style: TextStyle(
-                                          color: Colors.red,
-                                          fontSize: 14.sp,
-                                          fontWeight: FontWeight.w500,
+                        SizedBox(height: 20.h),
+
+                        Consumer<OtpScreenProvider>(
+                          builder: (context, provider, _) {
+                            if (provider.errorMessage != null) {
+                              return Padding(
+                                padding: EdgeInsets.only(bottom: 16.h),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 16.w,
+                                    vertical: 12.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    border: Border.all(color: Colors.red, width: 1.5),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: Text(
+                                          provider.errorMessage!,
+                                          style: TextStyle(
+                                            color: Colors.red.shade700,
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-
-                      SizedBox(height: 24.h),
-
-                      Consumer<OtpScreenProvider>(
-                        builder: (context, provider, _) => SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed:
-                                (provider.isLoading ||
-                                    provider.isUpdatingDeviceToken)
-                                ? null
-                                : _verifyOtp,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: ColorConstant.appColor,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 16.h),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              elevation: 5,
-                            ),
-                            child:
-                                (provider.isLoading ||
-                                    provider.isUpdatingDeviceToken)
-                                ? SizedBox(
-                                    height: 24.h,
-                                    width: 24.w,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2.5,
-                                    ),
-                                  )
-                                : Text(
-                                    "Verify OTP",
-                                    style: AppTextStyle.robotoMedium.copyWith(
-                                      fontSize: 16.sp,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    ],
                                   ),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 20.h),
-
-                      Consumer<OtpScreenProvider>(
-                        builder: (context, provider, _) => TextButton(
-                          onPressed: provider.canResend
-                              ? () => provider.resendOtp(
-                                  mobile: widget.phoneNumber,
-                                )
-                              : null,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                provider.canResend
-                                    ? "Didn't receive code? "
-                                    : "Resend in ",
-                                style: AppTextStyle.robotoRegular.copyWith(
-                                  fontSize: 14.sp,
-                                  color: Colors.white.withOpacity(0.8),
                                 ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+
+                        SizedBox(height: 24.h),
+
+                        Consumer<OtpScreenProvider>(
+                          builder: (context, provider, _) => SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: (provider.isLoading ||
+                                  provider.isUpdatingDeviceToken)
+                                  ? null
+                                  : _verifyOtp,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: ColorConstant.appColor,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                elevation: 5,
                               ),
-                              Text(
-                                provider.canResend
-                                    ? "Resend"
-                                    : "${provider.secondsRemaining}s",
-                                style: AppTextStyle.robotoBold.copyWith(
-                                  fontSize: 14.sp,
+                              child: (provider.isLoading ||
+                                  provider.isUpdatingDeviceToken)
+                                  ? SizedBox(
+                                height: 24.h,
+                                width: 24.w,
+                                child: CircularProgressIndicator(
                                   color: Colors.white,
-                                  decoration: provider.canResend
-                                      ? TextDecoration.underline
-                                      : null,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                                  : Text(
+                                "Verify OTP",
+                                style:
+                                AppTextStyle.robotoMedium.copyWith(
+                                  fontSize: 16.sp,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: 40.h),
-                    ],
+
+                        SizedBox(height: 20.h),
+
+                        Consumer<OtpScreenProvider>(
+                          builder: (context, provider, _) => TextButton(
+                            onPressed: provider.canResend
+                                ? () => provider.resendOtp(
+                              mobile: widget.phoneNumber,
+                            )
+                                : null,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  provider.canResend
+                                      ? "Didn't receive code? "
+                                      : "Resend in ",
+                                  style: AppTextStyle.robotoRegular.copyWith(
+                                    fontSize: 14.sp,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  provider.canResend
+                                      ? "Resend"
+                                      : "${provider.secondsRemaining}s",
+                                  style: AppTextStyle.robotoBold.copyWith(
+                                    fontSize: 14.sp,
+                                    color: provider.canResend
+                                        ? Colors.black
+                                        : Colors.grey.shade700,
+                                    decoration: provider.canResend
+                                        ? TextDecoration.underline
+                                        : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                        SizedBox(
+                          height: MediaQuery.of(context).viewInsets.bottom,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

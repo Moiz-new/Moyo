@@ -44,11 +44,8 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   Set<Marker> _markers = {};
   Set<Circle> _circles = {};
 
-  // CHANGED: Remove static const and make them dynamic
-  // static const LatLng _userLocation = LatLng(22.7196, 75.8577);
-  // static const LatLng _destination = LatLng(22.7532, 75.8937);
 
-  // NEW: Create dynamic LatLng based on widget parameters
+
   late final LatLng _userLocation;
   late final LatLng _destination;
 
@@ -73,14 +70,12 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   void initState() {
     super.initState();
 
-    // NEW: Initialize the LatLng values from widget parameters
     _userLocation = LatLng(
       widget.latitude ?? 22.7196, // Fallback to default if null
       widget.longitude ?? 75.8577,
     );
 
-    // You can set destination as same as user location or calculate an offset
-    // For now, keeping the same destination logic
+
     _destination = LatLng(22.7532, 75.8937);
 
     _initializeAnimations();

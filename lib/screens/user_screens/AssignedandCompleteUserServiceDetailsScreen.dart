@@ -620,6 +620,8 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                             durationType: _serviceData?['service_mode'] == 'hrs'
                                 ? 'Hourly'
                                 : (_serviceData?['service_mode'] ?? 'N/A'),
+                            userRatingGiven: _serviceData?['user_rating_given'] ?? false,
+
                             duration:
                                 _serviceData?['duration_value'] != null &&
                                     _serviceData?['duration_unit'] != null
@@ -659,8 +661,10 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                                 _serviceData?['description'] ??
                                 'No description available',
                           ),
-                          // Map Section
-                          if (_locationData != null) ...[
+
+                          if (_locationData != null &&
+                              (_serviceData?['status'] ?? '') !=
+                                  "completed") ...[
                             const SizedBox(height: 16),
                             Padding(
                               padding: const EdgeInsets.symmetric(

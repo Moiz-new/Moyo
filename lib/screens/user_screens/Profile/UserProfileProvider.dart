@@ -5,6 +5,8 @@ import 'package:first_flutter/baseControllers/APis.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../widgets/AdminDeletedAccountDialog.dart';
+import '../../../widgets/BlockedDialog.dart';
 import 'UserProfileModel.dart';
 
 class UserProfileProvider with ChangeNotifier {
@@ -50,7 +52,7 @@ class UserProfileProvider with ChangeNotifier {
   }
 
   // Fetch user profile from API
-  Future<void> loadUserProfile() async {
+  Future<void> loadUserProfile(BuildContext context) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -84,10 +86,32 @@ class UserProfileProvider with ChangeNotifier {
         } else {
           throw Exception('Profile data not found in response');
         }
+      }else if (response.statusCode == 403) {
+        // Show modern blocked dialog
+        if (context.mounted) {
+          await BlockedDialog.show(context);
+
+          if (context.mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+                  (route) => false,
+            );
+          }
+        }
       } else if (response.statusCode == 401) {
-        throw Exception('Session expired. Please login again.');
-      } else if (response.statusCode == 404) {
-        throw Exception('Profile not found');
+        // Show modern blocked dialog
+        if (context.mounted) {
+          await AdminDeletedAccountDialog.show(context);
+
+          if (context.mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+                  (route) => false,
+            );
+          }
+        }
       } else {
         throw Exception(
           'Failed to load profile. Error: ${response.statusCode}',
@@ -104,7 +128,7 @@ class UserProfileProvider with ChangeNotifier {
   }
 
   // Update user profile
-  Future<bool> updateProfile(Map<String, dynamic> userData) async {
+  Future<bool> updateProfile(Map<String, dynamic> userData,BuildContext context) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -129,7 +153,7 @@ class UserProfileProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         // Reload profile after successful update
-        await loadUserProfile();
+        await loadUserProfile(context);
         return true;
       } else {
         throw Exception('Failed to update profile');
@@ -145,8 +169,8 @@ class UserProfileProvider with ChangeNotifier {
   }
 
   // ✅ Refresh profile - This is the key method for syncing after EditProfile
-  Future<void> refreshProfile() async {
-    await loadUserProfile();
+  Future<void> refreshProfile(BuildContext context) async {
+    await loadUserProfile(context);
   }
 
   // Update profile data immediately (for instant UI feedback before API call)
@@ -157,9 +181,7 @@ class UserProfileProvider with ChangeNotifier {
     String? mobile,
   }) {
     if (_userProfile != null) {
-      // Update local data immediately for instant UI update
-      // Note: This is optional and only for immediate feedback
-      // The real update happens when refreshProfile() is called after save
+
       notifyListeners();
     }
   }

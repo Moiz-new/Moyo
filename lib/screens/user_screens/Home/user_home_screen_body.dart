@@ -21,7 +21,7 @@ class _UserHomeScreenBodyState extends State<UserHomeScreenBody> {
     super.initState();
     // Fetch categories and carousels when the screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CategoryProvider>().fetchCategories();
+      context.read<CategoryProvider>().fetchCategories(context);
       context.read<CarouselProvider>().fetchCarousels(
         type: 'user',
       );
@@ -152,7 +152,7 @@ class _UserHomeScreenBodyState extends State<UserHomeScreenBody> {
                           SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: () {
-                              categoryProvider.fetchCategories();
+                              categoryProvider.fetchCategories(context);
                             },
                             child: Text('Retry'),
                           ),

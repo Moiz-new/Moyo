@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
       print('=== Setting up notifications ===');
 
       final permissionGranted =
-          await NotificationService.requestNotificationPermission(context);
+      await NotificationService.requestNotificationPermission(context);
 
       if (permissionGranted) {
         print('✓ Notification permission granted');
@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushNamedAndRemoveUntil(
         context,
         "/UserCustomBottomNav",
-        (route) => false,
+            (route) => false,
       );
     }
   }
@@ -162,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   minHeight:
-                      MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).size.height -
                       MediaQuery.of(context).padding.top -
                       MediaQuery.of(context).padding.bottom,
                 ),
@@ -182,8 +182,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         Container(
                           padding: EdgeInsets.all(8.w),
                           decoration: BoxDecoration(
-                            color: Colors.black,
-                            border: Border.all(color: Colors.grey, width: 2),
+                            color: Colors.white,
+                            border: Border.all(color: Colors.grey.shade400, width: 2),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Row(
@@ -195,6 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ImageConstant.phoneLogo,
                                   height: 24.h,
                                   width: 24.w,
+                                  color: Colors.grey.shade700,
                                 ),
                               ),
                               Container(
@@ -202,9 +203,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 width: 200.w,
                                 height: 36.h,
                                 child: TextField(
-                                  cursorColor: Colors.white,
+                                  cursorColor: Colors.black,
                                   style: AppTextStyle.robotoMedium.copyWith(
-                                    color: Colors.white,
+                                    color: Colors.black,
                                     fontSize: 15.sp,
                                   ),
                                   controller: _phoneNumberController,
@@ -215,13 +216,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                     counterText: "",
                                     hintStyle: AppTextStyle.robotoMedium
                                         .copyWith(
-                                          color: Colors.white,
-                                          fontSize: 15.sp,
-                                        ),
-                                    fillColor: Colors.black,
+                                      color: Colors.grey.shade600,
+                                      fontSize: 15.sp,
+                                    ),
+                                    fillColor: Colors.white,
                                     border: OutlineInputBorder(
                                       borderSide: BorderSide(
-                                        color: Colors.grey,
+                                        color: Colors.grey.shade400,
                                       ),
                                     ),
                                     enabledBorder: OutlineInputBorder(
@@ -260,11 +261,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                   activeColor: ColorConstant.appColor,
                                   checkColor: Colors.white,
                                   side: BorderSide(
-                                    color: Colors.white70,
+                                    color: Colors.grey.shade600,
                                     width: 2,
                                   ),
                                   materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
+                                  MaterialTapTargetSize.shrinkWrap,
                                   visualDensity: VisualDensity.compact,
                                 ),
                               ),
@@ -274,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: RichText(
                                 text: TextSpan(
                                   style: AppTextStyle.robotoRegular.copyWith(
-                                    color: Colors.white70,
+                                    color: Colors.grey.shade700,
                                     fontSize: 12.sp,
                                   ),
                                   children: [
@@ -284,9 +285,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     TextSpan(
                                       text: "Terms and Conditions.",
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: Colors.black,
                                         decoration: TextDecoration.underline,
-                                        decorationColor: Colors.white,
+                                        decorationColor: Colors.black,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
@@ -327,7 +329,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _isTermsAccepted
                                 ? ColorConstant.appColor
-                                : Colors.grey,
+                                : Colors.grey.shade300,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 16.h),
                             shape: RoundedRectangleBorder(
@@ -336,20 +338,22 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: provider.isLoading
                               ? SizedBox(
-                                  height: 20.h,
-                                  width: 20.w,
-                                  child: const CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
+                            height: 20.h,
+                            width: 20.w,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
                               : Text(
-                                  "Continue",
-                                  style: AppTextStyle.robotoMedium.copyWith(
-                                    fontSize: 16.sp,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                            "Continue",
+                            style: AppTextStyle.robotoMedium.copyWith(
+                              fontSize: 16.sp,
+                              color: _isTermsAccepted
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                            ),
+                          ),
                         ),
                         SizedBox(height: 16.h),
                         // OR text
@@ -359,8 +363,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             Text(
                               "OR",
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Colors.grey.shade700,
                                 fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -372,14 +377,18 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? null
                               : () => _handleGoogleSignIn(context, provider),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
+                            backgroundColor: Colors.white,
+                            side: BorderSide(
+                              color: _isTermsAccepted
+                                  ? Colors.grey.shade400
+                                  : Colors.grey.shade300,
+                              width: 2,
+                            ),
                             padding: EdgeInsets.symmetric(vertical: 14.h),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
                             ),
-                            disabledBackgroundColor: Colors.grey.withOpacity(
-                              0.3,
-                            ),
+                            disabledBackgroundColor: Colors.grey.shade100,
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -396,8 +405,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 "Continue with Google",
                                 style: AppTextStyle.robotoMedium.copyWith(
                                   color: _isTermsAccepted
-                                      ? Colors.white
-                                      : Colors.grey,
+                                      ? Colors.black
+                                      : Colors.grey.shade500,
                                   fontSize: 16.sp,
                                 ),
                               ),
@@ -418,5 +427,4 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
     );
-  }
-}
+  }}

@@ -481,7 +481,6 @@ class _ConfirmProviderServiceDetailsScreenState
     }
   }
 
-  // NEW METHOD: Navigate to Timer Screen without OTP
   void _navigateToTimerScreen() {
     if (_serviceData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -950,6 +949,7 @@ class _ConfirmProviderServiceDetailsScreenState
                         onTaskComplete: _showEndWorkOTPDialog,
                         onSeeWorktime: _navigateToTimerScreen,
                       ),
+                      if(_serviceData!['status']?.toString() != "Completed" )
                       if (_locationData != null && _shouldShowMap()) ...[
                         SizedBox(height: 16.h),
                         Padding(

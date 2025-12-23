@@ -3,8 +3,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../../../constants/colorConstant/color_constant.dart';
+import '../Address/MyAddressProvider.dart';
 
 class UserLocationPickerScreen extends StatefulWidget {
   final double? initialLatitude;
@@ -35,6 +37,9 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
   bool _isSearching = false;
   String? _debounceTimer;
 
+  // For saved addresses
+  bool _showSavedAddresses = false;
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +51,11 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
 
     // Listen to search field changes with debounce
     _searchController.addListener(_onSearchChanged);
+
+    // Fetch saved addresses
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MyAddressProvider>().fetchAddresses();
+    });
   }
 
   void _onSearchChanged() {
@@ -165,6 +175,24 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
     _mapController?.animateCamera(CameraUpdate.newLatLngZoom(newPosition, 15));
   }
 
+  void _selectSavedAddress(AddressModel address) {
+    final newPosition = LatLng(
+      double.parse(address.latitude),
+      double.parse(address.longitude),
+    );
+
+    setState(() {
+      _selectedLocation = newPosition;
+      _address = address.fullAddress;
+      _showSavedAddresses = false;
+    });
+
+    // Animate camera
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(newPosition, 15));
+
+    FocusScope.of(context).unfocus();
+  }
+
   void _clearSearch() {
     _searchController.clear();
     setState(() {
@@ -190,8 +218,7 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
     } catch (e) {
       debugPrint('Error getting address: $e');
       setState(() {
-        _address =
-            'Lat: ${position.latitude.toStringAsFixed(4)}, '
+        _address = 'Lat: ${position.latitude.toStringAsFixed(4)}, '
             'Lon: ${position.longitude.toStringAsFixed(4)}';
       });
     } finally {
@@ -234,6 +261,9 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
         if (_showSuggestions) {
           setState(() => _showSuggestions = false);
         }
+        if (_showSavedAddresses) {
+          setState(() => _showSavedAddresses = false);
+        }
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
@@ -254,22 +284,23 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
                 setState(() {
                   _selectedLocation = position;
                   _showSuggestions = false;
+                  _showSavedAddresses = false;
                 });
                 FocusScope.of(context).unfocus();
                 await _getAddressFromLatLng(position);
               },
               markers: _selectedLocation != null
                   ? {
-                      Marker(
-                        markerId: MarkerId('selected'),
-                        position: _selectedLocation!,
-                        draggable: true,
-                        onDragEnd: (position) async {
-                          setState(() => _selectedLocation = position);
-                          await _getAddressFromLatLng(position);
-                        },
-                      ),
-                    }
+                Marker(
+                  markerId: MarkerId('selected'),
+                  position: _selectedLocation!,
+                  draggable: true,
+                  onDragEnd: (position) async {
+                    setState(() => _selectedLocation = position);
+                    await _getAddressFromLatLng(position);
+                  },
+                ),
+              }
                   : {},
               myLocationEnabled: true,
               myLocationButtonEnabled: false,
@@ -293,12 +324,11 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
                         Container(
                           decoration: BoxDecoration(
                             color: ColorConstant.white,
-                            borderRadius:
-                                _showSuggestions &&
-                                    _searchSuggestions.isNotEmpty
+                            borderRadius: _showSuggestions &&
+                                _searchSuggestions.isNotEmpty
                                 ? BorderRadius.vertical(
-                                    top: Radius.circular(12),
-                                  )
+                              top: Radius.circular(12),
+                            )
                                 : BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -322,6 +352,7 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
                                         _searchSuggestions.isNotEmpty) {
                                       setState(() => _showSuggestions = true);
                                     }
+                                    setState(() => _showSavedAddresses = false);
                                   },
                                 ),
                               ),
@@ -446,6 +477,25 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
               ),
             ),
 
+            // Saved Addresses Button
+            Positioned(
+              right: 16,
+              bottom: 230,
+              child: FloatingActionButton(
+                heroTag: 'saved_addresses',
+                mini: true,
+                backgroundColor: ColorConstant.white,
+                child: Icon(Icons.bookmark, color: ColorConstant.moyoOrange),
+                onPressed: () {
+                  setState(() {
+                    _showSavedAddresses = !_showSavedAddresses;
+                    _showSuggestions = false;
+                  });
+                  FocusScope.of(context).unfocus();
+                },
+              ),
+            ),
+
             // Current location button
             Positioned(
               right: 16,
@@ -456,11 +506,220 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
                 backgroundColor: ColorConstant.white,
                 child: Icon(Icons.my_location, color: ColorConstant.moyoOrange),
                 onPressed: () {
-                  setState(() => _showSuggestions = false);
+                  setState(() {
+                    _showSuggestions = false;
+                    _showSavedAddresses = false;
+                  });
                   _getCurrentLocation();
                 },
               ),
             ),
+
+            // Saved Addresses Panel
+            if (_showSavedAddresses)
+              Positioned(
+                top: 80,
+                left: 16,
+                right: 16,
+                child: Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    constraints: BoxConstraints(maxHeight: 400),
+                    decoration: BoxDecoration(
+                      color: ColorConstant.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Header
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: ColorConstant.moyoOrangeFade,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.bookmark,
+                                color: ColorConstant.moyoOrange,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Saved Addresses',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: ColorConstant.onSurface,
+                                ),
+                              ),
+                              Spacer(),
+                              InkWell(
+                                onTap: () {
+                                  setState(() => _showSavedAddresses = false);
+                                },
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Address List
+                        Flexible(
+                          child: Consumer<MyAddressProvider>(
+                            builder: (context, provider, child) {
+                              if (provider.isLoading) {
+                                return Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(32),
+                                    child: CircularProgressIndicator(
+                                      color: ColorConstant.moyoOrange,
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              if (provider.addresses.isEmpty) {
+                                return Padding(
+                                  padding: EdgeInsets.all(32),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.location_off,
+                                        size: 48,
+                                        color: Colors.grey[400],
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'No saved addresses',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              return ListView.separated(
+                                shrinkWrap: true,
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                itemCount: provider.addresses.length,
+                                separatorBuilder: (context, index) => Divider(
+                                  height: 1,
+                                  thickness: 0.5,
+                                  color: Colors.grey[300],
+                                ),
+                                itemBuilder: (context, index) {
+                                  final address = provider.addresses[index];
+                                  return InkWell(
+                                    onTap: () => _selectSavedAddress(address),
+                                    child: Container(
+                                      padding: EdgeInsets.all(16),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: address.isDefault
+                                                  ? ColorConstant.moyoOrange
+                                                  .withOpacity(0.2)
+                                                  : ColorConstant
+                                                  .moyoOrangeFade,
+                                              borderRadius:
+                                              BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              address.isDefault
+                                                  ? Icons.home
+                                                  : Icons.home_outlined,
+                                              color: ColorConstant.moyoOrange,
+                                              size: 20,
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                              children: [
+                                                if (address.isDefault)
+                                                  Container(
+                                                    margin: EdgeInsets.only(
+                                                        bottom: 4),
+                                                    padding:
+                                                    EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 2,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: ColorConstant
+                                                          .moyoGreen,
+                                                      borderRadius:
+                                                      BorderRadius.circular(
+                                                          12),
+                                                    ),
+                                                    child: Text(
+                                                      'Primary',
+                                                      style: TextStyle(
+                                                        color: ColorConstant
+                                                            .white,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                        FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                Text(
+                                                  address.fullAddress,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color:
+                                                    ColorConstant.onSurface,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                  TextOverflow.ellipsis,
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  'Pincode: ${address.pincode}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Icon(
+                                            Icons.arrow_forward_ios,
+                                            size: 16,
+                                            color: Colors.grey[400],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Address card
             Positioned(
@@ -504,23 +763,23 @@ class _UserLocationPickerScreenState extends State<UserLocationPickerScreen> {
                     SizedBox(height: 12),
                     _isLoadingAddress
                         ? Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  ColorConstant.moyoOrange,
-                                ),
-                              ),
-                            ),
-                          )
-                        : Text(
-                            _address,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
-                            ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            ColorConstant.moyoOrange,
                           ),
+                        ),
+                      ),
+                    )
+                        : Text(
+                      _address,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
                     SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,

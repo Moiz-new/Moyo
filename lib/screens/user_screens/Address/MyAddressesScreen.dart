@@ -122,7 +122,6 @@ class _MyAddressesScreenState extends State<MyAddressesScreen> {
                       ),
                     );
 
-                    // Add this condition to reload when address is added
                     if (result != null) {
                       provider.fetchAddresses();
                     }

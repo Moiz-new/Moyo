@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-
-import '../../../widgets/AdminDeletedAccountDialog.dart';
 import '../../../widgets/BlockedDialog.dart';
 import 'CatehoryModel.dart';
 
-class CategoryProvider with ChangeNotifier {
+typedef OnAuthErrorCallback = void Function(BuildContext context);
+
+class ProviderCategoryProvider with ChangeNotifier {
   List<Category> _categories = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -19,21 +19,26 @@ class CategoryProvider with ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
-  Future<void> fetchCategories(BuildContext context) async {
+  Future<void> fetchCategories({
+    required BuildContext context,
+    OnAuthErrorCallback? onAuthError,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
+      final token = prefs.getString('provider_auth_token');
       final response = await http.get(
-        Uri.parse('$base_url/api/admin/categories'),
+        Uri.parse('$base_url/api/admin/categories-all'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
+      print(token);
+      print(response.statusCode);
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
@@ -49,20 +54,7 @@ class CategoryProvider with ChangeNotifier {
             Navigator.pushNamedAndRemoveUntil(
               context,
               '/login',
-              (route) => false,
-            );
-          }
-        }
-      } else if (response.statusCode == 401) {
-        // Show modern blocked dialog
-        if (context.mounted) {
-          await AdminDeletedAccountDialog.show(context);
-
-          if (context.mounted) {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              '/login',
-              (route) => false,
+                  (route) => false,
             );
           }
         }

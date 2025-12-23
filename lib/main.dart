@@ -28,6 +28,7 @@ import 'package:first_flutter/screens/provider_screens/provider_service_details_
 import 'package:first_flutter/screens/user_screens/Address/MyAddressProvider.dart';
 import 'package:first_flutter/screens/user_screens/BookProviderProvider.dart';
 import 'package:first_flutter/screens/user_screens/Home/CategoryProvider.dart';
+import 'package:first_flutter/screens/user_screens/Home/ProviderCategoryProvider.dart';
 import 'package:first_flutter/screens/user_screens/Profile/EditProfileProvider.dart';
 import 'package:first_flutter/screens/user_screens/Profile/EditProfileScreen.dart';
 import 'package:first_flutter/screens/user_screens/Profile/FAQProvider.dart';
@@ -57,6 +58,7 @@ import 'package:provider/provider.dart';
 import 'BannerModel.dart';
 import 'NATS Service/NatsService.dart';
 import 'NotificationService.dart';
+import 'baseControllers/ConnectivityOverlay.dart';
 import 'baseControllers/NavigationController/navigation_controller.dart';
 import 'firebase_options.dart';
 import 'screens/commonOnboarding/loginScreen/login_screen.dart';
@@ -162,6 +164,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => UserSOSProvider()),
         ChangeNotifierProvider(create: (_) => RazorpayProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
+        ChangeNotifierProvider(create: (_) => ProviderCategoryProvider()),
       ],
       child: const MyApp(),
     ),
@@ -195,7 +198,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     });
   }
 
-  // Request Notification Permission
   Future<void> _requestNotificationPermissionIfNeeded() async {
     if (_notificationPermissionRequested) return;
     _notificationPermissionRequested = true;
@@ -212,7 +214,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         final token = await NotificationService.getDeviceToken();
         debugPrint('🔑 FCM Token: $token');
         // TODO: Send token to your backend
-        // await YourApiService.sendTokenToServer(token);
       }
     }
   }
@@ -262,11 +263,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             debugShowCheckedModeBanner: false,
             navigatorKey: NotificationService.navigatorKey,
 
+            // Your theme
             theme: ThemeData(
               textTheme: GoogleFonts.robotoTextTheme(
                 Theme.of(context).textTheme,
               ),
             ),
+
+            // Routes
             initialRoute: '/splash',
             routes: {
               '/splash': (_) => const SplashScreen(),
@@ -295,8 +299,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                     ModalRoute.of(context)?.settings.arguments as String?;
                 return ChangeNotifierProvider(
                   create: (_) => OtpScreenProvider(),
+                  child: Container(), // TODO: your email verification screen
                 );
               },
+            },
+
+            // ✅ Global wrapper for all screens
+            builder: (context, child) {
+              return ConnectivityOverlay(
+                child: child ?? const SizedBox.shrink(),
+              );
             },
           ),
         );

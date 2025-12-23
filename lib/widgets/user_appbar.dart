@@ -19,6 +19,7 @@ import '../screens/provider_screens/navigation/NotificationProvider.dart';
 import '../screens/provider_screens/navigation/UserNotificationProvider.dart';
 import '../screens/provider_screens/navigation/UserNotificationListScreen.dart';
 import '../screens/user_screens/Profile/UserProfileProvider.dart';
+import 'BlockedDialog.dart';
 
 class UserAppbar extends StatefulWidget implements PreferredSizeWidget {
   final String? type;
@@ -43,7 +44,7 @@ class _UserAppbarState extends State<UserAppbar> {
 
     // Load user profile using existing provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UserProfileProvider>().loadUserProfile();
+      context.read<UserProfileProvider>().loadUserProfile(context);
     });
 
     _getUserLocation();
@@ -57,7 +58,6 @@ class _UserAppbarState extends State<UserAppbar> {
     super.dispose();
   }
 
-  /// Fetch notifications for both provider and user
   Future<void> _fetchNotifications() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -117,16 +117,25 @@ class _UserAppbarState extends State<UserAppbar> {
           isBlocked = true;
         }
 
-        // Check provider blocked status if provider type
         if (widget.type == 'provider' &&
             profile['provider'] != null &&
             profile['provider']['is_blocked'] == true) {
           isBlocked = true;
         }
 
-        if (isBlocked) {
-          // User is blocked, logout and show dialog
-          await _handleBlockedUser();
+
+      }else if (response.statusCode == 403) {
+        // Show modern blocked dialog
+        if (context.mounted) {
+          await BlockedDialog.show(context);
+
+          if (context.mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+                  (route) => false,
+            );
+          }
         }
       }
     } catch (e) {
@@ -134,64 +143,7 @@ class _UserAppbarState extends State<UserAppbar> {
     }
   }
 
-  /// Handle blocked user - logout and redirect
-  Future<void> _handleBlockedUser() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
 
-      // Clear all tokens
-      await prefs.remove('auth_token');
-      await prefs.remove('provider_auth_token');
-
-      // Cancel location tracking
-      _positionStreamSubscription?.cancel();
-
-      // Show blocked dialog
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text(
-                'Account Blocked',
-                style: GoogleFonts.roboto(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-              content: Text(
-                'Your account has been blocked. You cannot access the app anymore. Please contact support for more information.',
-                style: GoogleFonts.roboto(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    // Navigate to login screen and clear all previous routes
-                    Navigator.of(
-                      context,
-                    ).pushNamedAndRemoveUntil('/LoginScreen', (route) => false);
-                  },
-                  child: Text(
-                    'OK',
-                    style: GoogleFonts.roboto(
-                      fontWeight: FontWeight.bold,
-                      color: ColorConstant.moyoOrange,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      }
-    } catch (e) {
-      print('Error handling blocked user: $e');
-    }
-  }
-
-  /// Start continuous location tracking
   void _startLocationTracking() {
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
