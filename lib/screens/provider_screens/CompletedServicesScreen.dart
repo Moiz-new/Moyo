@@ -106,7 +106,31 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      await _fetchCompletedServices();
+      // CHANGE HERE: Call _fetchCompletedServicesWithoutLoading instead
+      await _fetchCompletedServicesWithoutLoading();
+    }
+  }
+
+  // Add this new method after _fetchCompletedServices
+  Future<void> _fetchCompletedServicesWithoutLoading() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$base_url/bid/api/service/provider-service-complete'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          services = data['services'] ?? [];
+          // Don't change isLoading here
+        });
+      }
+    } catch (e) {
+      // Handle error
     }
   }
 
@@ -320,31 +344,31 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
                         borderRadius: BorderRadius.circular(24.r),
                         child: customer['image'] != null
                             ? Image.network(
-                          customer['image'],
-                          width: 48.w,
-                          height: 48.h,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 48.w,
-                            height: 48.h,
-                            color: ColorConstant.buttonBg,
-                            child: Icon(
-                              Icons.person,
-                              size: 24.sp,
-                              color: ColorConstant.darkPrimary,
-                            ),
-                          ),
-                        )
+                                customer['image'],
+                                width: 48.w,
+                                height: 48.h,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 48.w,
+                                  height: 48.h,
+                                  color: ColorConstant.buttonBg,
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 24.sp,
+                                    color: ColorConstant.darkPrimary,
+                                  ),
+                                ),
+                              )
                             : Container(
-                          width: 48.w,
-                          height: 48.h,
-                          color: ColorConstant.buttonBg,
-                          child: Icon(
-                            Icons.person,
-                            size: 24.sp,
-                            color: ColorConstant.darkPrimary,
-                          ),
-                        ),
+                                width: 48.w,
+                                height: 48.h,
+                                color: ColorConstant.buttonBg,
+                                child: Icon(
+                                  Icons.person,
+                                  size: 24.sp,
+                                  color: ColorConstant.darkPrimary,
+                                ),
+                              ),
                       ),
                       SizedBox(width: 12.w),
                       Expanded(
@@ -417,7 +441,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           '${entry.key}:',
@@ -545,6 +569,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
       ),
     );
   }
+
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Row(
       children: [

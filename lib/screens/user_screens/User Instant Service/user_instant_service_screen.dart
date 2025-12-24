@@ -203,7 +203,6 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                               isRequired: field.isRequired,
                               fieldName: field.fieldName,
                               maxLines: 5,
-                              // Multiple lines for textarea
                               keyboardType: TextInputType.multiline,
                             );
                           }
@@ -216,7 +215,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                         _timeBillingFields(context, selectedSubcategory),
 
                       if (widget.serviceType == 'later')
-                        _projectBillingFields(context),
+                        _scheduleDateTimeFields(context),
 
                       _budgetTextField(context),
                       _paymentMethodField(context),
@@ -231,14 +230,12 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                       _findServiceproviders(
                         context,
                         onPress: () async {
-                          // ✅ First check if payment method is selected before showing all validation errors
                           final selectedMethod = provider.getFormValue(
                             'payment_method',
                           );
 
                           if (selectedMethod == null ||
                               selectedMethod.toString().isEmpty) {
-                            // Show specific payment method error without triggering all validations
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Please select a payment method'),
@@ -555,6 +552,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
   }
 
   Widget _timeBillingFields(BuildContext context, Subcategory subcategory) {
+    print(widget.serviceType);
     return Consumer<UserInstantServiceProvider>(
       builder: (context, provider, child) {
         final selectedMode = provider.selectedServiceMode;
@@ -656,8 +654,6 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
 
             if (selectedMode == 'hrs') ...[
               _durationFields(context),
-              if (widget.serviceType != 'instant')
-                _scheduleDateTimeFields(context),
             ] else if (selectedMode == 'day') ...[
               _serviceDaysField(context),
               _startEndDateFields(context),
@@ -665,31 +661,6 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _projectBillingFields(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.task_alt, color: Colors.blue),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'This is a task-based service. No time scheduling required.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.blue.shade900),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1124,9 +1095,13 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Text(
-                title ?? "title",
-                style: Theme.of(context).textTheme.titleMedium,
+              Expanded(
+                child: Text(
+                  title ?? "title",
+                  style: Theme.of(context).textTheme.titleMedium,
+                  overflow: TextOverflow.ellipsis, // ✅ FIX: Handle overflow
+                  maxLines: 2, // ✅ FIX: Allow 2 lines for longer labels
+                ),
               ),
               if (isRequired)
                 Text(
@@ -1168,7 +1143,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                   borderSide: BorderSide(color: ColorConstant.moyoOrange),
                 ),
               ),
-              maxLines: 1,
+              maxLines: maxLines ?? 1,
               onChanged: (value) {
                 if (fieldName != null) {
                   provider.updateFormValue(fieldName, value);
@@ -1681,9 +1656,9 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
   }
 
   Widget _preRequisiteItems(BuildContext context, Subcategory subcategory) {
-    // Create local non-nullable copies
-    final explicitSiteList = subcategory.explicitSite;
-    final implicitSiteList = subcategory.implicitSite;
+    // ✅ FIX: Add null-safe handling
+    final explicitSiteList = subcategory.explicitSite ?? [];
+    final implicitSiteList = subcategory.implicitSite ?? [];
 
     return Container(
       padding: EdgeInsets.symmetric(vertical: 16),
@@ -1692,7 +1667,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Show explicit site section only if data exists
-          if (explicitSiteList!.isNotEmpty) ...[
+          if (explicitSiteList.isNotEmpty) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1716,7 +1691,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
           ],
 
           // Show implicit site section only if data exists
-          if (implicitSiteList!.isNotEmpty) ...[
+          if (implicitSiteList.isNotEmpty) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1735,7 +1710,7 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
               ],
             ),
             SizedBox(height: 10),
-            _buildEquipmentRowImplicit(context, implicitSiteList!),
+            _buildEquipmentRowImplicit(context, implicitSiteList),
           ],
         ],
       ),
@@ -1751,7 +1726,13 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
       runSpacing: 12,
       alignment: WrapAlignment.start,
       children: items
-          .map((item) => _buildEquipmentItem(context, item.name, item.image!))
+          .map(
+            (item) => _buildEquipmentItem(
+              context,
+              item.name,
+              item.image ?? '', // ✅ FIX: Use null-aware operator instead of !
+            ),
+          )
           .toList(),
     );
   }
@@ -1765,7 +1746,13 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
       runSpacing: 12,
       alignment: WrapAlignment.start,
       children: items
-          .map((item) => _buildEquipmentItem(context, item.name, item.image!))
+          .map(
+            (item) => _buildEquipmentItem(
+              context,
+              item.name,
+              item.image ?? '', // ✅ FIX: Use null-aware operator instead of !
+            ),
+          )
           .toList(),
     );
   }

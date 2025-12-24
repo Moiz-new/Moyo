@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../screens/user_screens/WidgetProviders/ServiceAPI.dart';
 import '../screens/user_screens/navigation/SOSEmergencyScreen.dart';
@@ -547,7 +548,7 @@ class UserServiceDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusLower = status.toLowerCase();
     print(statusLower);
-
+    print("ratinggggg$userRatingGiven");
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
       child: Container(
@@ -1000,7 +1001,6 @@ class UserServiceDetails extends StatelessWidget {
             ),
           ),
 
-          // Center content - PIN or Timer based on status
           Expanded(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 12),
@@ -1017,11 +1017,28 @@ class UserServiceDetails extends StatelessWidget {
               children: [
                 // Call Button
                 InkWell(
-                  onTap: () {
+                  onTap: () async {
                     if (providerPhone != null && providerPhone.isNotEmpty) {
-                      // Add your call functionality here
-                      // Example: launch('tel:$providerPhone');
-                      print('Calling: $providerPhone');
+                      final Uri phoneUri = Uri(
+                        scheme: 'tel',
+                        path: providerPhone,
+                      );
+
+                      try {
+                        if (await canLaunchUrl(phoneUri)) {
+                          await launchUrl(phoneUri);
+                        } else {
+                          _showErrorSnackbar(
+                            context,
+                            'Could not launch dialer',
+                          );
+                        }
+                      } catch (e) {
+                        _showErrorSnackbar(
+                          context,
+                          'Error launching dialer: $e',
+                        );
+                      }
                     } else {
                       _showErrorSnackbar(context, 'Phone number not available');
                     }

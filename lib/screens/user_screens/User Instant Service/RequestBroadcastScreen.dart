@@ -564,11 +564,12 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
 
   Future<void> _setupMarkers() async {
     final Set<Marker> markers = {};
-
+    debugPrint('📍 Loading current location icon...');
     final currentLocationIcon = await _getResizedMarkerIcon(
       'assets/icons/currentmarker.png',
       70,
     );
+    debugPrint('✅ Icon loaded successfully');
 
     // UNCHANGED: This will now use the dynamic _userLocation
     markers.add(
@@ -1075,12 +1076,11 @@ class NearbyProvider {
       isChecked: json['is_checked'] ?? false,
       latitude: double.tryParse(json['latitude']?.toString() ?? '0') ?? 0.0,
       longitude: double.tryParse(json['longitude']?.toString() ?? '0') ?? 0.0,
-      skills:
-          (json['skills'] as List<dynamic>?)
-              ?.map((s) => s.toString())
-              .toList() ??
+      skills: (json['skills'] as List<dynamic>?)
+          ?.map((s) => s.toString())
+          .toList() ??
           [],
-      distance: (json['distance'] as num?)?.toDouble() ?? 0.0,
+      distance: double.tryParse(json['distance']?.toString() ?? '0') ?? 0.0,
     );
   }
 }

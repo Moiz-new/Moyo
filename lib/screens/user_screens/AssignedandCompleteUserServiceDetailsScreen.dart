@@ -81,10 +81,10 @@ class _AssignedandCompleteUserServiceDetailsScreenState
       _setupRealtimeListeners();
 
       // CHANGED: Update every 1 second instead of 10
-      _locationUpdateTimer = Timer.periodic(const Duration(seconds: 1), (
+      _locationUpdateTimer = Timer.periodic(const Duration(seconds: 5), (
         timer,
       ) {
-        _fetchServiceDetails(); // ADDED: Fetch service details too
+        _fetchServiceDetails();
         _fetchLocationDetails();
       });
     } catch (e) {
@@ -193,16 +193,39 @@ class _AssignedandCompleteUserServiceDetailsScreenState
 
       if (response != null && response.isNotEmpty) {
         final decodedData = jsonDecode(response);
+
+        // ADDED: Debug print to see the actual structure
+        debugPrint('🔍 Full Response Structure: ${jsonEncode(decodedData)}');
+        debugPrint(
+          '🔍 user_rating_given value: ${decodedData['user_rating_given']}',
+        );
+        debugPrint('🔍 Response keys: ${decodedData.keys.toList()}');
+
+        // Check if response has 'data' wrapper
+        Map<String, dynamic> serviceData;
+        if (decodedData.containsKey('data')) {
+          // Response is wrapped in 'data'
+          serviceData = decodedData['data'];
+          debugPrint('✅ Response has data wrapper');
+        } else {
+          // Response is at root level
+          serviceData = decodedData;
+          debugPrint('✅ Response is at root level');
+        }
+
         if (mounted) {
           setState(() {
-            _serviceData = decodedData;
+            _serviceData = serviceData;
             // CHANGED: Only set isLoading false on first load
             if (isFirstLoad) {
               _isLoading = false;
             }
           });
         }
-        debugPrint('✅ Service details received: $_serviceData');
+        debugPrint('✅ Service details received');
+        debugPrint(
+          '✅ user_rating_given in _serviceData: ${_serviceData?['user_rating_given']}',
+        );
       } else {
         if (mounted && isFirstLoad) {
           setState(() {
@@ -235,7 +258,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
       if (response != null) {
         final data = jsonDecode(response);
         if (mounted) {
-          // CHANGED: Silently update without showing any loading
           setState(() {
             _locationData = data;
           });
@@ -522,6 +544,45 @@ class _AssignedandCompleteUserServiceDetailsScreenState
 
   @override
   Widget build(BuildContext context) {
+    // ADDED: Better debugging
+    debugPrint('🔍 _serviceData keys: ${_serviceData?.keys.toList()}');
+    debugPrint('🔍 user_rating_given: ${_serviceData?['user_rating_given']}');
+    debugPrint(
+      '🔍 user_rating_given type: ${_serviceData?['user_rating_given'].runtimeType}',
+    );
+    debugPrint('🔍 user mobile: ${_serviceData?['user']?['mobile']}');
+    debugPrint('🔍 status: ${_serviceData?['status']}');
+
+    // Handle user_rating_given safely
+    final userRatingGiven = _serviceData?['user_rating_given'];
+    final bool ratingGiven;
+
+    if (userRatingGiven == null) {
+      ratingGiven = false;
+      debugPrint('⚠️ user_rating_given is null, defaulting to false');
+    } else if (userRatingGiven is bool) {
+      ratingGiven = userRatingGiven;
+      debugPrint('✅ user_rating_given is bool: $ratingGiven');
+    } else if (userRatingGiven is int) {
+      ratingGiven = userRatingGiven == 1;
+      debugPrint(
+        '✅ user_rating_given is int ($userRatingGiven), converting to bool: $ratingGiven',
+      );
+    } else if (userRatingGiven is String) {
+      ratingGiven =
+          userRatingGiven.toLowerCase() == 'true' || userRatingGiven == '1';
+      debugPrint(
+        '✅ user_rating_given is String ($userRatingGiven), converting to bool: $ratingGiven',
+      );
+    } else {
+      ratingGiven = false;
+      debugPrint(
+        '⚠️ user_rating_given has unexpected type: ${userRatingGiven.runtimeType}',
+      );
+    }
+
+    debugPrint('✅ Final ratingGiven value: $ratingGiven');
+
     return Scaffold(
       backgroundColor: ColorConstant.moyoScaffoldGradient,
       appBar: UserOnlyTitleAppbar(title: "Service Details"),
@@ -562,15 +623,14 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                     razorpayProvider,
                     child,
                   ) {
-                    final user = _serviceData?['data'];
+                    final user = _serviceData?['user'];
                     final dynamicFields = _serviceData?['dynamic_fields'];
-                    final providerId = user?['assigned_provider_id']
+                    final providerId = _serviceData?['assigned_provider_id']
                         ?.toString();
 
                     // Listen to payment success
                     if (razorpayProvider.paymentId != null &&
                         !razorpayProvider.isProcessing) {
-                      // Payment successful - handle completion
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         _handlePaymentSuccess(razorpayProvider.paymentId!);
                         razorpayProvider.resetPaymentState();
@@ -600,7 +660,9 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                               razorpayProvider,
                             ),
                             providerId:
-                                _serviceData?['assigned_provider_id'] ?? 'N/A',
+                                _serviceData?['assigned_provider_id']
+                                    ?.toString() ??
+                                'N/A',
                             category: _serviceData?['category'] ?? 'N/A',
                             subCategory: _serviceData?['service'] ?? 'N/A',
                             date: _formatDate(_serviceData?['schedule_date']),
@@ -620,8 +682,8 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                             durationType: _serviceData?['service_mode'] == 'hrs'
                                 ? 'Hourly'
                                 : (_serviceData?['service_mode'] ?? 'N/A'),
-                            userRatingGiven: _serviceData?['user_rating_given'] ?? false,
-
+                            // CHANGED: Use the safely parsed boolean value
+                            userRatingGiven: ratingGiven,
                             duration:
                                 _serviceData?['duration_value'] != null &&
                                     _serviceData?['duration_unit'] != null
@@ -719,8 +781,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                                 ),
                               ),
                             ),
-
-                            // Arrival Time Display
                             if (_arrivalTime != null) ...[
                               const SizedBox(height: 12),
                               Row(
@@ -751,7 +811,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                               ),
                             ],
                           ],
-
                           const SizedBox(height: 16),
                         ],
                       ),
@@ -767,7 +826,8 @@ class _AssignedandCompleteUserServiceDetailsScreenState
   ) {
     final amount =
         double.tryParse(_serviceData?['budget']?.toString() ?? '0') ?? 0;
-    final user = _serviceData?['data'];
+    // CHANGED: Access user from root level
+    final user = _serviceData?['user'];
     final userName = user != null
         ? '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}'.trim()
         : 'Customer';
