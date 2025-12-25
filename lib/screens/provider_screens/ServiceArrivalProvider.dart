@@ -139,9 +139,8 @@ class ServiceArrivalProvider extends ChangeNotifier {
     // Cancel existing timers
     _stopAutoRefresh();
 
-    // Poll backend every 3 seconds for status changes (reduced from 15s)
     _statusCheckTimer = Timer.periodic(
-      const Duration(seconds: 3),
+      const Duration(seconds: 10),
       (timer) => _checkServiceStatus(serviceId),
     );
   }
@@ -328,7 +327,7 @@ class ServiceArrivalProvider extends ChangeNotifier {
     // Cancel existing countdown timer
     _countdownTimer?.cancel();
 
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (_isTimerActive && _remainingSeconds > 0) {
         _remainingSeconds--;
 

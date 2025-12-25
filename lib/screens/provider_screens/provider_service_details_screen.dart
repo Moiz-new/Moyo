@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:first_flutter/constants/colorConstant/color_constant.dart';
 import 'package:first_flutter/widgets/user_only_title_appbar.dart';
@@ -25,6 +26,8 @@ class _ProviderServiceDetailsScreenState
   Map<String, dynamic>? _serviceData;
   bool _isLoading = true;
   String? _errorMessage;
+  Timer? _pollingTimer;
+  bool _isFetching = false; // Prevents concurrent API calls
 
   @override
   void initState() {
@@ -49,8 +52,11 @@ class _ProviderServiceDetailsScreenState
         }
       }
 
-      // Fetch service details
+      // Fetch service details initially
       await _fetchServiceDetails();
+
+      // Start polling every 15 seconds
+      _startPolling();
     } catch (e) {
       setState(() {
         _errorMessage = 'Error initializing: $e';
@@ -59,7 +65,25 @@ class _ProviderServiceDetailsScreenState
     }
   }
 
-  Future<void> _fetchServiceDetails() async {
+  void _startPolling() {
+    // Cancel any existing timer to prevent duplicates
+    _pollingTimer?.cancel();
+
+    // Create a new timer that triggers every 15 seconds
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      // Only fetch if not currently fetching (prevents conflicts)
+      if (!_isFetching && mounted) {
+        _fetchServiceDetails(isPolling: true);
+      }
+    });
+  }
+
+  Future<void> _fetchServiceDetails({bool isPolling = false}) async {
+    // Prevent concurrent API calls
+    if (_isFetching) return;
+
+    _isFetching = true;
+
     try {
       // Get provider_id from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
@@ -73,7 +97,6 @@ class _ProviderServiceDetailsScreenState
         return;
       }
 
-
       String? providerId;
       try {
         // Try to decode JWT token
@@ -84,8 +107,8 @@ class _ProviderServiceDetailsScreenState
           );
           providerId =
               payload['provider_id']?.toString() ??
-              payload['id']?.toString() ??
-              payload['sub']?.toString();
+                  payload['id']?.toString() ??
+                  payload['sub']?.toString();
         } else {
           // Token might be the provider_id itself
           providerId = providerToken;
@@ -115,25 +138,45 @@ class _ProviderServiceDetailsScreenState
       );
 
       if (response != null) {
-        final data = jsonDecode(response);
-        setState(() {
-          _serviceData = data;
-          _isLoading = false;
-        });
+        final responseData = jsonDecode(response);
+
+        // ✅ FIX: Extract the 'data' field from the response
+        if (responseData['success'] == true && responseData['data'] != null) {
+          if (mounted) {
+            setState(() {
+              _serviceData = responseData['data']; // Use 'data' field, not the root
+              _isLoading = false;
+            });
+          }
+        } else {
+          if (mounted && !isPolling) {
+            setState(() {
+              _errorMessage = 'Invalid response format or unsuccessful request';
+              _isLoading = false;
+            });
+          }
+        }
       } else {
+        if (mounted && !isPolling) {
+          // Only show error on initial load, not during polling
+          setState(() {
+            _errorMessage = 'No response received from server';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted && !isPolling) {
+        // Only show error on initial load, not during polling
         setState(() {
-          _errorMessage = 'No response received from server';
+          _errorMessage = 'Error fetching service details: $e';
           _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error fetching service details: $e';
-        _isLoading = false;
-      });
+    } finally {
+      _isFetching = false;
     }
   }
-
   String _formatDate(String? dateString) {
     if (dateString == null || dateString.isEmpty) return 'N/A';
     try {
@@ -233,6 +276,8 @@ class _ProviderServiceDetailsScreenState
 
   @override
   void dispose() {
+    // Cancel the polling timer to prevent memory leaks
+    _pollingTimer?.cancel();
     // Don't disconnect if other parts of app might be using it
     // _natsService.disconnect();
     super.dispose();
@@ -248,90 +293,91 @@ class _ProviderServiceDetailsScreenState
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
           ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _isLoading = true;
-                          _errorMessage = null;
-                        });
-                        _initializeAndFetchData();
-                      },
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red,
               ),
-            )
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                    _errorMessage = null;
+                  });
+                  _initializeAndFetchData();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      )
           : _serviceData == null
           ? const Center(child: Text('No service data available'))
           : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    ProviderConfirmServiceDetails(
-                      isProvider: true,
-                      category: _serviceData!['category']?.toString() ?? 'N/A',
-                      serviceId: _serviceData!['id']?.toString() ?? 'N/A',
-                      subCategory:
-                          _serviceData!['service']?.toString() ??
-                          _serviceData!['title']?.toString() ??
-                          'N/A',
-                      date:
-                          _formatDate(_serviceData!['schedule_date']) +
-                          _formatTime(_serviceData!['schedule_time']),
-                      pin: _serviceData!['start_otp']?.toString() ?? 'N/A',
-                      providerPhone:
-                          _serviceData!['user']?['mobile']?.toString() ?? 'N/A',
-                      dp:
-                          _serviceData!['user']?['image']?.toString() ??
-                          'https://picsum.photos/200/200',
-                      name:
-                          '${_serviceData!['user']?['firstname']?.toString() ?? ''} ${_serviceData!['user']?['lastname']?.toString() ?? ''}'
-                              .trim()
-                              .isEmpty
-                          ? 'N/A'
-                          : '${_serviceData!['user']?['firstname']?.toString() ?? ''} ${_serviceData!['user']?['lastname']?.toString() ?? ''}'
-                                .trim(),
-                      rating: "4.5",
-                      // Rating not in response, using default
-                      status: _serviceData!['status']?.toString() ?? 'pending',
-                      durationType: _getDurationType(
-                        _serviceData!['service_mode']?.toString(),
-                      ),
-                      duration: _formatDuration(_serviceData!),
-                      price:
-                          _serviceData!['budget']?.toString() ??
-                          _serviceData!['bid']?['amount']?.toString() ??
-                          '0',
-                      address: _serviceData!['location']?.toString() ?? 'N/A',
-                      particular: _buildParticulars(_serviceData!),
-                      description:
-                          _serviceData!['description']?.toString() ?? 'N/A', user_id: '',
-                    ),
-                  ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ProviderConfirmServiceDetails(
+                isProvider: true,
+                category: _serviceData!['category']?.toString() ?? 'N/A',
+                serviceId: _serviceData!['id']?.toString() ?? 'N/A',
+                subCategory:
+                _serviceData!['service']?.toString() ??
+                    _serviceData!['title']?.toString() ??
+                    'N/A',
+                date:
+                _formatDate(_serviceData!['schedule_date']) +
+                    _formatTime(_serviceData!['schedule_time']),
+                pin: _serviceData!['start_otp']?.toString() ?? 'N/A',
+                providerPhone:
+                _serviceData!['user']?['mobile']?.toString() ?? 'N/A',
+                dp:
+                _serviceData!['user']?['image']?.toString() ??
+                    'https://picsum.photos/200/200',
+                name:
+                '${_serviceData!['user']?['firstname']?.toString() ?? ''} ${_serviceData!['user']?['lastname']?.toString() ?? ''}'
+                    .trim()
+                    .isEmpty
+                    ? 'N/A'
+                    : '${_serviceData!['user']?['firstname']?.toString() ?? ''} ${_serviceData!['user']?['lastname']?.toString() ?? ''}'
+                    .trim(),
+                rating: "4.5",
+                // Rating not in response, using default
+                status: _serviceData!['status']?.toString() ?? 'pending',
+                durationType: _getDurationType(
+                  _serviceData!['service_mode']?.toString(),
                 ),
+                duration: _formatDuration(_serviceData!),
+                price:
+                _serviceData!['budget']?.toString() ??
+                    _serviceData!['bid']?['amount']?.toString() ??
+                    '0',
+                address: _serviceData!['location']?.toString() ?? 'N/A',
+                particular: _buildParticulars(_serviceData!),
+                description:
+                _serviceData!['description']?.toString() ?? 'N/A',
+                user_id: '',
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

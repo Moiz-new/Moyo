@@ -182,7 +182,7 @@ class ProviderBidProvider extends ChangeNotifier {
 
     if (!_natsService.isConnected) {
       await _natsService.reconnect();
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(seconds: 10));
     }
 
     await initialize();
@@ -199,7 +199,7 @@ class ProviderBidProvider extends ChangeNotifier {
 
   /// Refresh/reload bids
   Future<void> refresh() async {
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(seconds: 10));
     notifyListeners();
   }
 

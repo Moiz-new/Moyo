@@ -92,7 +92,7 @@ void main() async {
     await NatsService().initialize(
       url: 'nats://api.moyointernational.com',
       autoReconnect: true,
-      reconnectInterval: const Duration(seconds: 5),
+      reconnectInterval: const Duration(seconds: 10),
     );
     print("✅ NATS initialized");
 

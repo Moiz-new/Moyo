@@ -23,7 +23,7 @@ class NatsService {
 
   // Auto-reconnect settings
   bool _autoReconnect = true;
-  Duration _reconnectInterval = const Duration(seconds: 5);
+  Duration _reconnectInterval = const Duration(seconds: 10);
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 10;
 
@@ -44,7 +44,7 @@ class NatsService {
     String? username,
     String? password,
     bool autoReconnect = true,
-    Duration reconnectInterval = const Duration(seconds: 5),
+    Duration reconnectInterval = const Duration(seconds: 10),
   }) async {
     if (_isInitialized) {
       debugPrint('⚠️ NATS already initialized');
@@ -285,7 +285,7 @@ class NatsService {
   Future<String?> request(
       String subject,
       String request, {
-        Duration timeout = const Duration(seconds: 5),
+        Duration timeout = const Duration(seconds: 10),
       }) async {
     if (!_isConnected || _client == null) {
       debugPrint('❌ Not connected to NATS');

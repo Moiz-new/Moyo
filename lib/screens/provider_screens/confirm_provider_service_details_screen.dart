@@ -62,14 +62,14 @@ class _ConfirmProviderServiceDetailsScreenState
 
   static const String GOOGLE_MAPS_API_KEY =
       'AIzaSyBqTGBtJYtoRpvJFpF6tls1jcwlbiNcEVI';
+
   @override
   void initState() {
     super.initState();
     _loadCustomMarkers();
     _initializeAndFetchData();
 
-    // Refresh service details every 5 seconds
-    Timer.periodic(const Duration(seconds: 5), (timer) {
+    Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) {
         _fetchServiceDetails();
       } else {
@@ -200,8 +200,8 @@ class _ConfirmProviderServiceDetailsScreenState
 
       // Update location every 5 seconds (reduced from 10s)
       _locationUpdateTimer = Timer.periodic(
-        const Duration(seconds: 5),
-            (timer) => _fetchLocationDetails(),
+        const Duration(seconds: 10),
+        (timer) => _fetchLocationDetails(),
       );
     } catch (e) {
       setState(() {
@@ -210,6 +210,7 @@ class _ConfirmProviderServiceDetailsScreenState
       });
     }
   }
+
   Future<void> _fetchServiceDetails() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -232,8 +233,8 @@ class _ConfirmProviderServiceDetailsScreenState
           );
           providerId =
               payload['provider_id']?.toString() ??
-                  payload['id']?.toString() ??
-                  payload['sub']?.toString();
+              payload['id']?.toString() ??
+              payload['sub']?.toString();
         } else {
           providerId = providerToken;
         }
@@ -257,14 +258,23 @@ class _ConfirmProviderServiceDetailsScreenState
       final response = await _natsService.request(
         'service.info.details',
         requestData,
-        timeout: const Duration(seconds: 5),
+        timeout: const Duration(seconds: 10),
       );
 
       if (response != null) {
-        final data = jsonDecode(response);
+        final responseData = jsonDecode(response);
+
+        // ✅ FIX: Extract the 'data' field from the response
+        final data =
+            responseData is Map<String, dynamic> &&
+                responseData['success'] == true &&
+                responseData['data'] != null
+            ? responseData['data']
+            : responseData;
 
         // Only update if data has changed
-        if (_serviceData == null || jsonEncode(_serviceData) != jsonEncode(data)) {
+        if (_serviceData == null ||
+            jsonEncode(_serviceData) != jsonEncode(data)) {
           setState(() {
             _serviceData = data;
           });
@@ -275,6 +285,7 @@ class _ConfirmProviderServiceDetailsScreenState
       print('Service details update: $e');
     }
   }
+
   Future<void> _fetchLocationDetails() async {
     try {
       final requestData = jsonEncode({'service_id': widget.serviceId});
@@ -282,14 +293,23 @@ class _ConfirmProviderServiceDetailsScreenState
       final response = await _natsService.request(
         'service.location.info',
         requestData,
-        timeout: const Duration(seconds: 3),
+        timeout: const Duration(seconds: 10),
       );
 
       if (response != null) {
-        final data = jsonDecode(response);
+        final responseData = jsonDecode(response);
+
+        // ✅ FIX: Handle both nested and direct response formats
+        final data =
+            responseData is Map<String, dynamic> &&
+                responseData['success'] == true &&
+                responseData['data'] != null
+            ? responseData['data']
+            : responseData;
 
         // Only update state if data has changed
-        if (_locationData == null || jsonEncode(_locationData) != jsonEncode(data)) {
+        if (_locationData == null ||
+            jsonEncode(_locationData) != jsonEncode(data)) {
           setState(() {
             _locationData = data;
             _isLoading = false;
@@ -307,6 +327,7 @@ class _ConfirmProviderServiceDetailsScreenState
       print('Location update: $e');
     }
   }
+
   void _checkArrivalDistance() {
     if (_locationData == null) return;
 
@@ -949,226 +970,236 @@ class _ConfirmProviderServiceDetailsScreenState
                         onTaskComplete: _showEndWorkOTPDialog,
                         onSeeWorktime: _navigateToTimerScreen,
                       ),
-                      if(_serviceData!['status']?.toString() != "Completed" )
-                      if (_locationData != null && _shouldShowMap()) ...[
-                        SizedBox(height: 16.h),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w),
-                          child: GestureDetector(
-                            onTap: _openFullScreenMapWithAnimation, // Simple tap to open
-                            child: Container(
-                              height: 300.h,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20.r),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Stack(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(20.r),
-                                    child: AbsorbPointer(
-                                      child: GoogleMap(
-                                        initialCameraPosition: CameraPosition(
-                                          target: LatLng(
-                                            double.parse(
-                                              _locationData!['latitude']?.toString() ?? '0',
+                      if (_serviceData!['status']?.toString() != "Completed")
+                        if (_locationData != null && _shouldShowMap()) ...[
+                          SizedBox(height: 16.h),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10.w),
+                            child: GestureDetector(
+                              onTap: _openFullScreenMapWithAnimation,
+                              // Simple tap to open
+                              child: Container(
+                                height: 300.h,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20.r),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(20.r),
+                                      child: AbsorbPointer(
+                                        child: GoogleMap(
+                                          initialCameraPosition: CameraPosition(
+                                            target: LatLng(
+                                              double.parse(
+                                                _locationData!['latitude']
+                                                        ?.toString() ??
+                                                    '0',
+                                              ),
+                                              double.parse(
+                                                _locationData!['longitude']
+                                                        ?.toString() ??
+                                                    '0',
+                                              ),
                                             ),
-                                            double.parse(
-                                              _locationData!['longitude']?.toString() ?? '0',
-                                            ),
+                                            zoom: 13,
                                           ),
-                                          zoom: 13,
+                                          markers: _markers,
+                                          polylines: _polylines,
+                                          circles: _circles,
+                                          myLocationButtonEnabled: false,
+                                          zoomControlsEnabled: false,
+                                          compassEnabled: false,
+                                          mapToolbarEnabled: false,
+                                          myLocationEnabled: false,
+                                          mapType: MapType.normal,
+                                          onMapCreated: (controller) {
+                                            _mapController = controller;
+                                            _isMapReady = true;
+                                            _setupMap();
+                                          },
                                         ),
-                                        markers: _markers,
-                                        polylines: _polylines,
-                                        circles: _circles,
-                                        myLocationButtonEnabled: false,
-                                        zoomControlsEnabled: false,
-                                        compassEnabled: false,
-                                        mapToolbarEnabled: false,
-                                        myLocationEnabled: false,
-                                        mapType: MapType.normal,
-                                        onMapCreated: (controller) {
-                                          _mapController = controller;
-                                          _isMapReady = true;
-                                          _setupMap();
-                                        },
                                       ),
                                     ),
-                                  ),
-                                  // Tap indicator overlay
-                                  Positioned(
-                                    bottom: 16.h,
-                                    right: 16.w,
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 12.w,
-                                        vertical: 8.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.9),
-                                        borderRadius: BorderRadius.circular(8.r),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.2),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 2),
+                                    // Tap indicator overlay
+                                    Positioned(
+                                      bottom: 16.h,
+                                      right: 16.w,
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w,
+                                          vertical: 8.h,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.9),
+                                          borderRadius: BorderRadius.circular(
+                                            8.r,
                                           ),
-                                        ],
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.fullscreen,
-                                            size: 18.sp,
-                                            color: Colors.blue,
-                                          ),
-                                          SizedBox(width: 6.w),
-                                          Text(
-                                            'Tap to expand',
-                                            style: TextStyle(
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.black87,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.2,
+                                              ),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.fullscreen,
+                                              size: 18.sp,
+                                              color: Colors.blue,
+                                            ),
+                                            SizedBox(width: 6.w),
+                                            Text(
+                                              'Tap to expand',
+                                              style: TextStyle(
+                                                fontSize: 12.sp,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
 
-                        SizedBox(height: 12.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8.w),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.access_time,
-                                color: Colors.black87,
-                                size: 20.sp,
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Text(
-                              'Arriving in $_arrivalTime minutes',
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        if (_isNearDestination &&
-                            !arrivalProvider.hasArrived) ...[
-                          SizedBox(height: 16.h),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: Column(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(12.w),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12.r),
-                                    border: Border.all(
-                                      color: Colors.green,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.location_on,
-                                        color: Colors.green,
-                                        size: 24.sp,
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      Text(
-                                        'You are ${_distanceToDestination.round()}m from destination',
-                                        style: TextStyle(
-                                          color: Colors.green,
-                                          fontSize: 16.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                          SizedBox(height: 12.h),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8.w),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
                                 ),
-                                SizedBox(height: 12.h),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 56.h,
-                                  child: ElevatedButton(
-                                    onPressed:
-                                    arrivalProvider.isProcessingArrival
-                                        ? null
-                                        : _handleArrived,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          12.r,
-                                        ),
+                                child: Icon(
+                                  Icons.access_time,
+                                  color: Colors.black87,
+                                  size: 20.sp,
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Text(
+                                'Arriving in $_arrivalTime minutes',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          if (_isNearDestination &&
+                              !arrivalProvider.hasArrived) ...[
+                            SizedBox(height: 16.h),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20.w),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(12.w),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      border: Border.all(
+                                        color: Colors.green,
+                                        width: 2,
                                       ),
-                                      elevation: 4,
                                     ),
-                                    child: arrivalProvider.isProcessingArrival
-                                        ? SizedBox(
-                                      height: 24.h,
-                                      width: 24.w,
-                                      child:
-                                      const CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                        : Row(
+                                    child: Row(
                                       mainAxisAlignment:
-                                      MainAxisAlignment.center,
+                                          MainAxisAlignment.center,
                                       children: [
                                         Icon(
-                                          Icons.check_circle,
-                                          size: 28.sp,
+                                          Icons.location_on,
+                                          color: Colors.green,
+                                          size: 24.sp,
                                         ),
-                                        SizedBox(width: 12.w),
+                                        SizedBox(width: 8.w),
                                         Text(
-                                          'I\'ve Arrived',
+                                          'You are ${_distanceToDestination.round()}m from destination',
                                           style: TextStyle(
-                                            fontSize: 18.sp,
-                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green,
+                                            fontSize: 16.sp,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(height: 12.h),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 56.h,
+                                    child: ElevatedButton(
+                                      onPressed:
+                                          arrivalProvider.isProcessingArrival
+                                          ? null
+                                          : _handleArrived,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12.r,
+                                          ),
+                                        ),
+                                        elevation: 4,
+                                      ),
+                                      child: arrivalProvider.isProcessingArrival
+                                          ? SizedBox(
+                                              height: 24.h,
+                                              width: 24.w,
+                                              child:
+                                                  const CircularProgressIndicator(
+                                                    color: Colors.white,
+                                                    strokeWidth: 2,
+                                                  ),
+                                            )
+                                          : Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.check_circle,
+                                                  size: 28.sp,
+                                                ),
+                                                SizedBox(width: 12.w),
+                                                Text(
+                                                  'I\'ve Arrived',
+                                                  style: TextStyle(
+                                                    fontSize: 18.sp,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
                       SizedBox(height: 16.h),
                     ],
                   ),
@@ -1177,6 +1208,7 @@ class _ConfirmProviderServiceDetailsScreenState
             ),
     );
   }
+
   void _openFullScreenMapWithAnimation() {
     if (_locationData == null) return;
 
@@ -1216,9 +1248,10 @@ class _ConfirmProviderServiceDetailsScreenState
           const end = Offset.zero;
           const curve = Curves.easeInOut;
 
-          var tween = Tween(begin: begin, end: end).chain(
-            CurveTween(curve: curve),
-          );
+          var tween = Tween(
+            begin: begin,
+            end: end,
+          ).chain(CurveTween(curve: curve));
 
           return SlideTransition(
             position: animation.drive(tween),
@@ -1229,7 +1262,6 @@ class _ConfirmProviderServiceDetailsScreenState
       ),
     );
   }
-
 
   Future<void> _showEndWorkOTPDialog() async {
     final result = await showDialog<bool>(

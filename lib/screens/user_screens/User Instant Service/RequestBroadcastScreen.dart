@@ -44,8 +44,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   Set<Marker> _markers = {};
   Set<Circle> _circles = {};
 
-
-
   late final LatLng _userLocation;
   late final LatLng _destination;
 
@@ -74,7 +72,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
       widget.latitude ?? 22.7196, // Fallback to default if null
       widget.longitude ?? 75.8577,
     );
-
 
     _destination = LatLng(22.7532, 75.8937);
 
@@ -835,6 +832,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
             ),
           ),
 
+          /*
           Positioned(
             bottom: 0,
             left: 0,
@@ -1028,6 +1026,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
               ),
             ),
           ),
+*/
         ],
       ),
     );
@@ -1076,9 +1075,10 @@ class NearbyProvider {
       isChecked: json['is_checked'] ?? false,
       latitude: double.tryParse(json['latitude']?.toString() ?? '0') ?? 0.0,
       longitude: double.tryParse(json['longitude']?.toString() ?? '0') ?? 0.0,
-      skills: (json['skills'] as List<dynamic>?)
-          ?.map((s) => s.toString())
-          .toList() ??
+      skills:
+          (json['skills'] as List<dynamic>?)
+              ?.map((s) => s.toString())
+              .toList() ??
           [],
       distance: double.tryParse(json['distance']?.toString() ?? '0') ?? 0.0,
     );
