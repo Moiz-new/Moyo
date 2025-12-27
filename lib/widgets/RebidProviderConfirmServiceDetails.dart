@@ -199,78 +199,67 @@ class RebidProviderConfirmServiceDetails extends StatelessWidget {
   }
 
   Future<Map<String, String>?> _showReBidDialog(BuildContext context) async {
-    final TextEditingController amountController = TextEditingController(
-      text: price,
-    );
-    double baseAmount = double.tryParse(price!) ?? 0;
-
-    final TextEditingController noteController = TextEditingController(
-      text: "cash",
-    );
+    final amountController = TextEditingController(text: price);
+    final noteController = TextEditingController(text: "cash");
+    final baseAmount = double.tryParse(price!) ?? 0;
     String? amountError;
 
     return showDialog<Map<String, String>>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            void validateAmount() {
-              if (amountController.text.isEmpty) {
-                setState(() => amountError = null);
-                return;
-              }
-
-              double entered = double.tryParse(amountController.text) ?? 0;
-              double minAllowed = baseAmount * 0.70;
-              double maxAllowed = baseAmount * 2.00;
-
-              setState(() {
-                if (entered < minAllowed) {
-                  amountError =
-                      "Amount must be at least ₹${minAllowed.toStringAsFixed(2)}";
-                } else if (entered > maxAllowed) {
-                  amountError =
-                      "Amount must not exceed ₹${maxAllowed.toStringAsFixed(2)}";
-                } else {
-                  amountError = null;
-                }
-              });
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          void validateAmount() {
+            if (amountController.text.isEmpty) {
+              setState(() => amountError = null);
+              return;
             }
 
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.r),
-              ),
-              title: Text(
+            final entered = double.tryParse(amountController.text) ?? 0;
+            final minAllowed = baseAmount * 0.70;
+            final maxAllowed = baseAmount * 2.00;
+
+            setState(() {
+              if (entered < minAllowed) {
+                amountError = "Min ₹${minAllowed.toStringAsFixed(0)}";
+              } else if (entered > maxAllowed) {
+                amountError = "Max ₹${maxAllowed.toStringAsFixed(0)}";
+              } else {
+                amountError = null;
+              }
+            });
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            contentPadding: EdgeInsets.fromLTRB(15.w, 15.h, 15.w, 8.h),
+            title: Padding(
+              padding: EdgeInsets.only(bottom: 8.h),
+              child: Text(
                 'Re-Bid Service',
                 style: GoogleFonts.roboto(
-                  fontSize: 20.sp,
+                  fontSize: 18.sp,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF1D1B20),
                 ),
               ),
-              content: Column(
+            ),
+            content: SingleChildScrollView(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Enter your new bid amount and note',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
-                      color: Color(0xFF7A7A7A),
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
+                  // Amount Field
                   Text(
                     'Amount *',
                     style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1D1B20),
                     ),
                   ),
-                  SizedBox(height: 8.h),
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
@@ -279,7 +268,11 @@ class RebidProviderConfirmServiceDetails extends StatelessWidget {
                       hintText: 'Enter amount',
                       prefixText: '₹ ',
                       errorText: amountError,
-                      hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
+                      errorStyle: GoogleFonts.roboto(fontSize: 11.sp),
+                      hintStyle: GoogleFonts.roboto(
+                        color: Color(0xFFBDBDBD),
+                        fontSize: 13.sp,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.r),
                         borderSide: BorderSide(color: Color(0xFFE6E6E6)),
@@ -292,35 +285,42 @@ class RebidProviderConfirmServiceDetails extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8.r),
                         borderSide: BorderSide(
                           color: ColorConstant.moyoOrange,
-                          width: 2.w,
+                          width: 1.5.w,
                         ),
                       ),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding: EdgeInsets.all(12.w),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 10.h,
+                      ),
+                      isDense: true,
                     ),
                     style: GoogleFonts.roboto(
                       fontSize: 14.sp,
                       color: Color(0xFF1D1B20),
                     ),
                   ),
-                  SizedBox(height: 16.h),
+
+                  // Note Field
                   Text(
                     'Note',
                     style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
+                      fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1D1B20),
                     ),
                   ),
-                  SizedBox(height: 8.h),
                   TextField(
                     controller: noteController,
-                    maxLines: 3,
+                    maxLines: 2,
                     maxLength: 200,
                     decoration: InputDecoration(
                       hintText: 'Enter note...',
-                      hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
+                      hintStyle: GoogleFonts.roboto(
+                        color: Color(0xFFBDBDBD),
+                        fontSize: 13.sp,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.r),
                         borderSide: BorderSide(color: Color(0xFFE6E6E6)),
@@ -333,12 +333,17 @@ class RebidProviderConfirmServiceDetails extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8.r),
                         borderSide: BorderSide(
                           color: ColorConstant.moyoOrange,
-                          width: 2.w,
+                          width: 1.5.w,
                         ),
                       ),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding: EdgeInsets.all(12.w),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 10.h,
+                      ),
+                      isDense: true,
+                      counterStyle: GoogleFonts.roboto(fontSize: 11.sp),
                     ),
                     style: GoogleFonts.roboto(
                       fontSize: 14.sp,
@@ -347,85 +352,73 @@ class RebidProviderConfirmServiceDetails extends StatelessWidget {
                   ),
                 ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(null);
-                  },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20.w,
-                      vertical: 12.h,
-                    ),
-                  ),
-                  child: Text(
-                    'Cancel',
-                    style: GoogleFonts.roboto(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF7A7A7A),
-                    ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.roboto(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF7A7A7A),
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    final amount = amountController.text.trim();
-                    final note = noteController.text.trim();
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final amount = amountController.text.trim();
+                  final note = noteController.text.trim();
 
-                    if (amount.isEmpty) {
-                      _showErrorSnackbar(context, 'Please enter amount');
-                      return;
-                    }
+                  if (amount.isEmpty) {
+                    _showErrorSnackbar(context, 'Please enter amount');
+                    return;
+                  }
 
-                    double entered = double.tryParse(amount) ?? 0;
-                    double minAllowed = baseAmount * 0.70;
-                    double maxAllowed = baseAmount * 2.00;
+                  final entered = double.tryParse(amount) ?? 0;
+                  final minAllowed = baseAmount * 0.70;
+                  final maxAllowed = baseAmount * 2.00;
 
-                    if (entered < minAllowed) {
-                      _showErrorSnackbar(
-                        context,
-                        "Amount must be at least ₹${minAllowed.toStringAsFixed(2)}",
-                      );
-                      return;
-                    } else if (entered > maxAllowed) {
-                      _showErrorSnackbar(
-                        context,
-                        "Amount must not exceed ₹${maxAllowed.toStringAsFixed(2)}",
-                      );
-                      return;
-                    }
+                  if (entered < minAllowed || entered > maxAllowed) {
+                    _showErrorSnackbar(
+                      context,
+                      entered < minAllowed
+                          ? "Min amount: ₹${minAllowed.toStringAsFixed(0)}"
+                          : "Max amount: ₹${maxAllowed.toStringAsFixed(0)}",
+                    );
+                    return;
+                  }
 
-                    if (note.isEmpty) {
-                      _showErrorSnackbar(context, 'Please enter a note');
-                      return;
-                    }
+                  if (note.isEmpty) {
+                    _showErrorSnackbar(context, 'Please enter a note');
+                    return;
+                  }
 
-                    Navigator.of(context).pop({'amount': amount, 'note': note});
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFCD3232),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 24.w,
-                      vertical: 12.h,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
+                  Navigator.of(context).pop({'amount': amount, 'note': note});
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFCD3232),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 10.h,
                   ),
-                  child: Text(
-                    'Submit Re-Bid',
-                    style: GoogleFonts.roboto(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                 ),
-              ],
-            );
-          },
-        );
-      },
+                child: Text(
+                  'Submit',
+                  style: GoogleFonts.roboto(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 

@@ -9,6 +9,7 @@ import 'package:first_flutter/widgets/user_only_title_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../widgets/personal_info_card.dart';
+import 'BankVerifyScreen.dart';
 import 'FAQScreen.dart';
 import 'UserProfileProvider.dart';
 
@@ -259,6 +260,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => MyAddressesScreen()),
+            );
+          },
+        ),
+
+        PersonalInfoCard(
+          isLabel: false,
+          label: "Add Bank",
+          title: 'Bank Details',
+          iconPath: 'assets/icons/moyo_icon_info_card_address.svg',
+          showArrow: true,
+          onPress: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => BankVerifyScreen()),
             );
           },
         ),

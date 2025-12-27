@@ -54,6 +54,8 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   int _secondsElapsed = 0;
   Timer? _timer;
   Timer? _zoomTimer;
+  int _masterTimerSeconds = 0;
+  Timer? _masterTimer;
 
   List<NearbyProvider> _nearbyProviders = [];
   List<AcceptedBid> _acceptedBids = [];
@@ -61,6 +63,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   bool _isZoomingOut = true;
   bool _isDialogShowing = false;
   bool _isLoadingProviders = true;
+  bool _isScreenClosed = false;
 
   final NatsService _natsService = NatsService();
 
@@ -69,19 +72,29 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
     super.initState();
 
     _userLocation = LatLng(
-      widget.latitude ?? 22.7196, // Fallback to default if null
+      widget.latitude ?? 22.7196,
       widget.longitude ?? 75.8577,
     );
 
     _destination = LatLng(22.7532, 75.8937);
 
     _initializeAnimations();
+
+    // ADD THIS CHECK: If master timer is at 180, close immediately
+    if (_masterTimerSeconds == 180) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_isScreenClosed) {
+          _closeScreen();
+        }
+      });
+      return; // Don't initialize timers or fetch providers
+    }
+
     _initializeTimers();
     _fetchNearbyProviders();
     _subscribeToNats();
   }
 
-  // Fetch nearby providers from NATS API
   Future<void> _fetchNearbyProviders() async {
     try {
       setState(() {
@@ -107,24 +120,30 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
               .map((p) => NearbyProvider.fromJson(p))
               .toList();
 
-          setState(() {
-            _nearbyProviders = providers;
-            _isLoadingProviders = false;
-          });
+          if (mounted) {
+            setState(() {
+              _nearbyProviders = providers;
+              _isLoadingProviders = false;
+            });
+          }
 
           await _setupMarkers();
         }
       } else {
         debugPrint('❌ No response from NATS API');
+        if (mounted) {
+          setState(() {
+            _isLoadingProviders = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching nearby providers: $e');
+      if (mounted) {
         setState(() {
           _isLoadingProviders = false;
         });
       }
-    } catch (e) {
-      debugPrint('❌ Error fetching nearby providers: $e');
-      setState(() {
-        _isLoadingProviders = false;
-      });
     }
   }
 
@@ -139,18 +158,21 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   }
 
   void _handleBidAcceptance(String message) {
+    if (_isScreenClosed) return;
+
     try {
       final data = jsonDecode(message);
       final acceptedBid = AcceptedBid.fromJson(data);
 
-      setState(() {
-        _acceptedBids.add(acceptedBid);
-        _bidTimers[acceptedBid.bidId] = 30.0;
-      });
+      if (mounted) {
+        setState(() {
+          _acceptedBids.add(acceptedBid);
+          _bidTimers[acceptedBid.bidId] = 30.0;
+        });
+      }
 
       _startBidTimer(acceptedBid.bidId);
 
-      // Show dialog when first bid comes
       if (!_isDialogShowing && _acceptedBids.length == 1) {
         _showAcceptedProvidersDialog();
       }
@@ -165,7 +187,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
     _countdownTimers[bidId] = Timer.periodic(
       const Duration(milliseconds: 100),
       (timer) {
-        if (!mounted) {
+        if (!mounted || _isScreenClosed) {
           timer.cancel();
           return;
         }
@@ -177,11 +199,13 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
           timer.cancel();
           _countdownTimers[bidId]?.cancel();
 
-          setState(() {
-            _acceptedBids.removeWhere((bid) => bid.bidId == bidId);
-            _bidTimers.remove(bidId);
-            _countdownTimers.remove(bidId);
-          });
+          if (mounted) {
+            setState(() {
+              _acceptedBids.removeWhere((bid) => bid.bidId == bidId);
+              _bidTimers.remove(bidId);
+              _countdownTimers.remove(bidId);
+            });
+          }
 
           _timerStreamController.add(Map.from(_bidTimers));
           _checkAndDismissDialog();
@@ -191,15 +215,17 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   }
 
   void _checkAndDismissDialog() {
-    if (_isDialogShowing && _acceptedBids.isEmpty) {
+    if (_isDialogShowing && _acceptedBids.isEmpty && mounted) {
       _isDialogShowing = false;
-      if (mounted && Navigator.canPop(context)) {
+      if (Navigator.canPop(context)) {
         Navigator.of(context).pop();
       }
     }
   }
 
   void _showAcceptedProvidersDialog() {
+    if (_isScreenClosed) return;
+
     _isDialogShowing = true;
 
     showDialog(
@@ -224,7 +250,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                         onTap: () {
                           _isDialogShowing = false;
                           Navigator.of(dialogContext).pop();
-                          Navigator.of(context).pop();
+                          _closeScreen();
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -348,9 +374,11 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
 
                                     return UserInterestedProviderListCard(
                                       providerName:
-                                          '${bid.provider.user.firstname} ${bid.provider.user.lastname}',
-                                      gender: bid.provider.user.gender,
-                                      age: bid.provider.user.age.toString(),
+                                          '${bid.provider.user.firstname ?? 'Provider'} ${bid.provider.user.lastname ?? ''}',
+                                      gender: bid.provider.user.gender ?? 'N/A',
+                                      age:
+                                          bid.provider.user.age?.toString() ??
+                                          'N/A',
                                       distance: '${(index + 1) * 0.5} km',
                                       reachTime: '${(index + 1) * 5} min',
                                       category: bid.service.category,
@@ -362,6 +390,8 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                                       experience: '${3 + index}',
                                       dp: bid.provider.user.image,
                                       remainingTime: remainingTime,
+                                      bidStatus: bid.status,
+                                      // Pass the status to the card
                                       onBook: remainingTime > 0
                                           ? () {
                                               _bookProvider(bid, dialogContext);
@@ -424,7 +454,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                             Navigator.pop(context);
                             _isDialogShowing = false;
                             Navigator.of(dialogContext).pop();
-                            Navigator.of(this.context).pop();
+                            _closeScreen();
 
                             Navigator.of(this.context).push(
                               MaterialPageRoute(
@@ -515,15 +545,32 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
 
   void _initializeTimers() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
+      if (mounted && !_isScreenClosed) {
         setState(() {
           _secondsElapsed++;
         });
       }
     });
 
+    _masterTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _isScreenClosed) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        _masterTimerSeconds++; // Changed from -- to ++
+      });
+
+      // CHECK: If timer reaches 180, close screen
+      if (_masterTimerSeconds >= 180) {
+        timer.cancel();
+        _handleMasterTimerExpiry();
+      }
+    });
+
     _zoomTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (_mapController != null && mounted) {
+      if (_mapController != null && mounted && !_isScreenClosed) {
         if (_isZoomingOut) {
           _targetZoom -= 0.01;
           if (_targetZoom <= 12.5) {
@@ -543,6 +590,50 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
         );
       }
     });
+  }
+
+  void _handleMasterTimerExpiry() {
+    if (_isScreenClosed) return;
+
+    _isScreenClosed = true;
+
+    if (_isDialogShowing && mounted) {
+      _isDialogShowing = false;
+      Navigator.of(
+        context,
+        rootNavigator: true,
+      ).popUntil((route) => route.isFirst);
+    }
+
+    Navigator.of(context).pop();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Request expired. No providers found.',
+            style: TextStyle(fontSize: 16),
+          ),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted && !_isScreenClosed) {
+          Navigator.of(context).pop();
+        }
+      });
+    }
+  }
+
+  void _closeScreen() {
+    if (_isScreenClosed) return;
+    _isScreenClosed = true;
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   Future<BitmapDescriptor> _getResizedMarkerIcon(String path, int width) async {
@@ -568,12 +659,10 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
     );
     debugPrint('✅ Icon loaded successfully');
 
-    // UNCHANGED: This will now use the dynamic _userLocation
     markers.add(
       Marker(
         markerId: const MarkerId('pickup'),
         position: _userLocation,
-        // Uses dynamic value
         icon: currentLocationIcon,
         anchor: const Offset(0.5, 0.5),
         infoWindow: const InfoWindow(title: 'Pickup Location'),
@@ -583,13 +672,12 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
     markers.add(
       Marker(
         markerId: const MarkerId('destination'),
-        position: _destination, // Uses dynamic value
+        position: _destination,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
         infoWindow: const InfoWindow(title: 'Destination'),
       ),
     );
 
-    // Add nearby provider markers
     for (var provider in _nearbyProviders) {
       markers.add(
         Marker(
@@ -616,11 +704,14 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
 
   @override
   void dispose() {
+    _isScreenClosed = true;
+
     _pulseController.dispose();
     _searchController.dispose();
     _zoomController.dispose();
     _timer?.cancel();
     _zoomTimer?.cancel();
+    _masterTimer?.cancel();
     _mapController?.dispose();
 
     _countdownTimers.values.forEach((timer) => timer?.cancel());
@@ -635,133 +726,111 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: ColorConstant.white,
-      body: Stack(
-        children: [
-          GoogleMap(
-            // CHANGED: Use dynamic _userLocation
-            initialCameraPosition: CameraPosition(
-              target: _userLocation, // Uses dynamic value
-              zoom: 13.5,
+    return WillPopScope(
+      onWillPop: () async {
+        _closeScreen();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: ColorConstant.white,
+        body: Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: _userLocation,
+                zoom: 13.5,
+              ),
+              markers: _markers,
+              circles: _circles,
+              onMapCreated: (GoogleMapController controller) async {
+                if (!_controller.isCompleted) {
+                  _controller.complete(controller);
+                  _mapController = controller;
+                }
+              },
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              compassEnabled: false,
+              rotateGesturesEnabled: false,
+              scrollGesturesEnabled: true,
+              zoomGesturesEnabled: true,
+              tiltGesturesEnabled: false,
+              myLocationEnabled: false,
             ),
-            markers: _markers,
-            circles: _circles,
-            onMapCreated: (GoogleMapController controller) async {
-              if (!_controller.isCompleted) {
-                _controller.complete(controller);
-                _mapController = controller;
-              }
-            },
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            compassEnabled: false,
-            rotateGesturesEnabled: false,
-            scrollGesturesEnabled: true,
-            zoomGesturesEnabled: true,
-            tiltGesturesEnabled: false,
-            myLocationEnabled: false,
-          ),
 
-          Center(
-            child: IgnorePointer(
-              child: AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, child) {
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 150 + (_pulseController.value * 100),
-                        height: 150 + (_pulseController.value * 100),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: ColorConstant.moyoOrange.withOpacity(
-                              0.6 - _pulseController.value * 0.6,
+            Center(
+              child: IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 150 + (_pulseController.value * 100),
+                          height: 150 + (_pulseController.value * 100),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: ColorConstant.moyoOrange.withOpacity(
+                                0.6 - _pulseController.value * 0.6,
+                              ),
+                              width: 3,
                             ),
-                            width: 3,
                           ),
                         ),
-                      ),
-                      Container(
-                        width: 120 + (_pulseController.value * 60),
-                        height: 120 + (_pulseController.value * 60),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: ColorConstant.moyoOrange.withOpacity(
-                            0.2 - _pulseController.value * 0.2,
+                        Container(
+                          width: 120 + (_pulseController.value * 60),
+                          height: 120 + (_pulseController.value * 60),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ColorConstant.moyoOrange.withOpacity(
+                              0.2 - _pulseController.value * 0.2,
+                            ),
                           ),
                         ),
-                      ),
-                      Container(
-                        width: 80 + (_pulseController.value * 30),
-                        height: 80 + (_pulseController.value * 30),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: ColorConstant.moyoOrange.withOpacity(
-                            0.4 - _pulseController.value * 0.4,
+                        Container(
+                          width: 80 + (_pulseController.value * 30),
+                          height: 80 + (_pulseController.value * 30),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ColorConstant.moyoOrange.withOpacity(
+                              0.4 - _pulseController.value * 0.4,
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 10,
-                left: 16,
-                right: 16,
-                bottom: 16,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    ColorConstant.black.withOpacity(0.3),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: ColorConstant.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: ColorConstant.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
                         ),
                       ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: ColorConstant.black,
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 10,
+                  left: 16,
+                  right: 16,
+                  bottom: 16,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      ColorConstant.black.withOpacity(0.3),
+                      Colors.transparent,
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
                       decoration: BoxDecoration(
                         color: ColorConstant.white,
                         borderRadius: BorderRadius.circular(12),
@@ -773,66 +842,97 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
                           ),
                         ],
                       ),
-                      child: Row(
-                        children: [
-                          AnimatedBuilder(
-                            animation: _searchController,
-                            builder: (context, child) {
-                              return Transform.rotate(
-                                angle: _searchController.value * 2 * pi,
-                                child: const Icon(
-                                  Icons.radar,
-                                  color: ColorConstant.moyoOrange,
-                                  size: 20,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _acceptedBids.isEmpty
-                                      ? 'Searching for provider...'
-                                      : '${_acceptedBids.length} provider${_acceptedBids.length > 1 ? 's' : ''} responded',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  _isLoadingProviders
-                                      ? 'Loading...'
-                                      : '${_nearbyProviders.length} nearby providers',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            '${_secondsElapsed}s',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: ColorConstant.moyoOrange,
-                            ),
-                          ),
-                        ],
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: ColorConstant.black,
+                        ),
+                        onPressed: () => _closeScreen(),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: ColorConstant.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: ColorConstant.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            AnimatedBuilder(
+                              animation: _searchController,
+                              builder: (context, child) {
+                                return Transform.rotate(
+                                  angle: _searchController.value * 2 * pi,
+                                  child: const Icon(
+                                    Icons.radar,
+                                    color: ColorConstant.moyoOrange,
+                                    size: 20,
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _acceptedBids.isEmpty
+                                        ? 'Searching for provider...'
+                                        : '${_acceptedBids.length} provider${_acceptedBids.length > 1 ? 's' : ''} responded',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    _isLoadingProviders
+                                        ? 'Loading...'
+                                        : '${_nearbyProviders.length} nearby providers',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '${_masterTimerSeconds}s',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: ColorConstant.moyoOrange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-
-          /*
+          ],
+        ),
+      ),
+    );
+  }
+}
+/*
           Positioned(
             bottom: 0,
             left: 0,
@@ -1027,13 +1127,7 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
             ),
           ),
 */
-        ],
-      ),
-    );
-  }
-}
 
-// New NearbyProvider model class for API response
 class NearbyProvider {
   final int providerId;
   final int userId;
@@ -1090,6 +1184,7 @@ class AcceptedBid {
   final String serviceId;
   final String bidId;
   final String amount;
+  final String status; // Add this field
   final ServiceData service;
   final ProviderData provider;
   final String acceptedAt;
@@ -1098,6 +1193,7 @@ class AcceptedBid {
     required this.serviceId,
     required this.bidId,
     required this.amount,
+    required this.status, // Add this parameter
     required this.service,
     required this.provider,
     required this.acceptedAt,
@@ -1108,6 +1204,8 @@ class AcceptedBid {
       serviceId: json['service_id'] ?? '',
       bidId: json['bid_id'] ?? '',
       amount: json['amount'] ?? '',
+      status: json['status'] ?? 'Accepted',
+      // Parse status from JSON
       service: ServiceData.fromJson(json['service'] ?? {}),
       provider: ProviderData.fromJson(json['provider'] ?? {}),
       acceptedAt: json['accepted_at'] ?? '',

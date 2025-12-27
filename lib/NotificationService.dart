@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:first_flutter/screens/provider_screens/navigation/ProviderChats/ProviderChatScreen.dart';
 import 'package:first_flutter/screens/provider_screens/provider_service_details_screen.dart';
 import 'package:first_flutter/screens/user_screens/user_custom_bottom_nav.dart';
 import 'package:flutter/material.dart';
@@ -328,7 +329,7 @@ class NotificationService {
     print("✅ [BACKGROUND] Notification shown with sound: $soundFileName");
   }
 
-  // Handle Notification Tap with proper navigation (UNCHANGED)
+  // 🔥 UPDATED: Handle Notification Tap with Chat Message Support
   static void _handleNotificationTap(String? payload) {
     if (payload == null || payload.isEmpty) {
       print("⚠️ Empty payload received");
@@ -339,7 +340,53 @@ class NotificationService {
 
     try {
       final Map<String, dynamic> data = jsonDecode(payload);
+      print("📦 Parsed data: $data");
 
+      // 🆕 CHECK FOR CHAT MESSAGE NOTIFICATION
+      if (data.containsKey("type") &&
+          data["type"] == "chat_message" &&
+          data.containsKey("sender_type") &&
+          data["sender_type"] == "user") {
+
+        print("💬 Chat message from USER detected!");
+
+        // Extract chat data
+        String userName = data["send_name"]?.toString() ?? "User";
+        String userImage = data["image_url"]?.toString() ?? "";
+        String userId = data["sender_id"]?.toString() ?? "";
+        String serviceId = data["service_id"]?.toString() ?? "";
+        String chatId = data["chat_id"]?.toString() ?? "";
+        String userPhone = ""; // Not in payload, can be fetched later if needed
+
+        print("📍 Navigating to ProviderChatScreen");
+        print("   User: $userName (ID: $userId)");
+        print("   Service ID: $serviceId");
+        print("   Chat ID: $chatId");
+
+        final context = navigatorKey.currentContext;
+
+        if (context != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProviderChatScreen(
+                userName: userName,
+                userImage: userImage.isNotEmpty ? userImage : null,
+                userId: userId,
+                isOnline: true, // You can add online status to notification payload if needed
+                userPhone: userPhone.isNotEmpty ? userPhone : null,
+                serviceId: serviceId,
+                providerId: userId,
+              ),
+            ),
+          );
+        } else {
+          print("❌ Navigator context not available");
+        }
+        return;
+      }
+
+      // EXISTING LOGIC: Service-based notifications
       if (data.containsKey("serviceId") && data.containsKey("role")) {
         String serviceId = data["serviceId"].toString();
         String role = data["role"].toString();

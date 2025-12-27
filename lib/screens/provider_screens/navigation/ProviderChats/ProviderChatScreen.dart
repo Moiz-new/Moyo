@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 
 import '../../../../constants/colorConstant/color_constant.dart';
 import 'ProviderChatProvider.dart';
@@ -31,8 +32,7 @@ class ProviderChatScreen extends StatefulWidget {
   State<ProviderChatScreen> createState() => _ProviderChatScreenState();
 }
 
-class _ProviderChatScreenState extends State<ProviderChatScreen>
-    with TickerProviderStateMixin {
+class _ProviderChatScreenState extends State<ProviderChatScreen> with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -40,11 +40,15 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
   bool _isTyping = false;
   bool _chatInitialized = false;
   bool _isSending = false;
-  int _previousMessageCount = 0;
+
+  // ✅ Timer for polling chat history every second
+  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     print("=== ProviderChatScreen initState ===");
     print("Service ID: ${widget.serviceId}");
     print("Provider ID: ${widget.providerId}");
@@ -52,7 +56,6 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
 
     _messageController.addListener(_onTextChanged);
 
-    // Listen to keyboard changes
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
         Future.delayed(Duration(milliseconds: 600), () {
@@ -62,21 +65,27 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print("PostFrameCallback - calling _initializeChat");
       _initializeChat();
     });
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      // ✅ Screen is active again
+      _startPolling();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // ✅ Screen is inactive
+      _stopPolling();
+    }
+  }
+
   Future<void> _initializeChat() async {
     print("=== _initializeChat called ===");
-    print("serviceId is null: ${widget.serviceId == null}");
-    print("providerId is null: ${widget.providerId == null}");
 
     if (widget.serviceId == null || widget.providerId == null) {
-      print("ERROR: serviceId or providerId is null!");
-      print("serviceId: ${widget.serviceId}");
-      print("providerId: ${widget.providerId}");
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -99,29 +108,24 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
         context,
         listen: false,
       );
-      print("ChatProvider obtained successfully");
 
-      print("Calling chatProvider.initiateChat...");
       final success = await chatProvider.initiateChat(
         serviceId: widget.serviceId!,
         providerId: widget.providerId!,
       );
 
-      print("initiateChat returned: $success");
-
       if (success) {
         setState(() {
           _chatInitialized = true;
-          _previousMessageCount = chatProvider.messages.length;
         });
 
-        // Wait for build to complete, then scroll
+        // ✅ Start polling when chat is initialized
+        _startPolling();
+
         await Future.delayed(Duration(milliseconds: 300));
         _scrollToBottom(immediate: true);
       } else {
-        print("Chat initialization failed");
         if (mounted && chatProvider.error != null) {
-          print("Error: ${chatProvider.error}");
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(chatProvider.error!),
@@ -136,11 +140,8 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
           );
         }
       }
-    } catch (e, stackTrace) {
-      print("=== EXCEPTION in _initializeChat ===");
-      print("Error: $e");
-      print("StackTrace: $stackTrace");
-
+    } catch (e) {
+      print("Error in _initializeChat: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -158,6 +159,50 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
     }
   }
 
+  // ✅ Start polling chat history every second
+  void _startPolling() {
+    if (_pollingTimer != null && _pollingTimer!.isActive) {
+      return; // Already polling
+    }
+
+    final chatProvider = Provider.of<ProviderChatProvider>(
+      context,
+      listen: false,
+    );
+
+    print("🔄 Starting chat history polling (every 1 second)");
+    chatProvider.setScreenActive(true);
+
+    _pollingTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
+      if (!mounted || !_chatInitialized) {
+        timer.cancel();
+        return;
+      }
+
+      if (chatProvider.chatId != null) {
+        await chatProvider.fetchChatHistory(chatId: chatProvider.chatId!, silent: true);
+      }
+    });
+  }
+
+  // ✅ Stop polling when screen is inactive
+  void _stopPolling() {
+    print("⏸️ Stopping chat history polling");
+
+    if (_pollingTimer != null) {
+      _pollingTimer!.cancel();
+      _pollingTimer = null;
+    }
+
+    if (mounted) {
+      final chatProvider = Provider.of<ProviderChatProvider>(
+        context,
+        listen: false,
+      );
+      chatProvider.setScreenActive(false);
+    }
+  }
+
   void _onTextChanged() {
     setState(() {
       _isTyping = _messageController.text.trim().isNotEmpty;
@@ -166,7 +211,6 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
 
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty || _isSending) return;
-
     if (!_chatInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -178,7 +222,6 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
     }
 
     final messageText = _messageController.text.trim();
-
     setState(() {
       _messageController.clear();
       _isSending = true;
@@ -190,7 +233,6 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
         context,
         listen: false,
       );
-
       final success = await chatProvider.sendMessage(message: messageText);
 
       setState(() {
@@ -198,12 +240,7 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
       });
 
       if (success) {
-        // Wait for the UI to update with the new message
         await Future.delayed(Duration(milliseconds: 100));
-        _scrollToBottom(immediate: true);
-
-        // Backup scroll attempt
-        await Future.delayed(Duration(milliseconds: 400));
         _scrollToBottom(immediate: true);
       } else {
         if (mounted) {
@@ -235,19 +272,25 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
   void _scrollToBottom({bool immediate = false}) {
     if (!_scrollController.hasClients) return;
 
-    if (immediate) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-    } else {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        if (immediate) {
+          _scrollController.jumpTo(0.0);
+        } else {
+          _scrollController.animateTo(
+            0.0,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopPolling(); // ✅ Stop polling when screen is closed
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -263,14 +306,10 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
       body: SafeArea(
         child: Consumer<ProviderChatProvider>(
           builder: (context, chatProvider, child) {
-            // Check if new message was added
-            if (chatProvider.messages.length > _previousMessageCount) {
-              _previousMessageCount = chatProvider.messages.length;
-              // Scroll to bottom when new message arrives
+            // ✅ Auto-scroll when new messages arrive
+            if (chatProvider.messages.isNotEmpty && _chatInitialized) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                Future.delayed(Duration(milliseconds: 200), () {
-                  _scrollToBottom(immediate: true);
-                });
+                _scrollToBottom();
               });
             }
 
@@ -367,33 +406,33 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
                 child: ClipOval(
                   child: widget.userImage != null
                       ? CachedNetworkImage(
-                          imageUrl: widget.userImage!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: ColorConstant.moyoOrangeFade,
-                            child: Icon(
-                              Icons.person,
-                              color: ColorConstant.moyoOrange,
-                              size: 20.sp,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: ColorConstant.moyoOrangeFade,
-                            child: Icon(
-                              Icons.person,
-                              color: ColorConstant.moyoOrange,
-                              size: 20.sp,
-                            ),
-                          ),
-                        )
+                    imageUrl: widget.userImage!,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: ColorConstant.moyoOrangeFade,
+                      child: Icon(
+                        Icons.person,
+                        color: ColorConstant.moyoOrange,
+                        size: 20.sp,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: ColorConstant.moyoOrangeFade,
+                      child: Icon(
+                        Icons.person,
+                        color: ColorConstant.moyoOrange,
+                        size: 20.sp,
+                      ),
+                    ),
+                  )
                       : Container(
-                          color: ColorConstant.moyoOrangeFade,
-                          child: Icon(
-                            Icons.person,
-                            color: ColorConstant.moyoOrange,
-                            size: 20.sp,
-                          ),
-                        ),
+                    color: ColorConstant.moyoOrangeFade,
+                    child: Icon(
+                      Icons.person,
+                      color: ColorConstant.moyoOrange,
+                      size: 20.sp,
+                    ),
+                  ),
                 ),
               ),
               if (widget.isOnline)
@@ -441,29 +480,32 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
       actions: [
         IconButton(
           icon: Icon(Icons.more_vert, color: Color(0xFF1D1B20)),
-          onPressed: () {
-            // Show options menu
-          },
+          onPressed: () {},
         ),
       ],
     );
   }
 
   Widget _buildMessagesList(ProviderChatProvider chatProvider) {
-    // Sort messages to ensure correct order (oldest first)
     final sortedMessages = List<ChatMessage>.from(chatProvider.messages)
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
       itemCount: sortedMessages.length,
       physics: AlwaysScrollableScrollPhysics(),
+      reverse: true,
       itemBuilder: (context, index) {
         final message = sortedMessages[index];
+
+        final realIndex = sortedMessages.length - 1 - index;
+        final prevMessage = realIndex > 0
+            ? sortedMessages[realIndex - 1]
+            : null;
         final showDate =
-            index == 0 ||
-            !_isSameDay(message.createdAt, sortedMessages[index - 1].createdAt);
+            prevMessage == null ||
+                !_isSameDay(message.createdAt, prevMessage!.createdAt);
 
         final isSentByMe = message.senderType.toLowerCase() == 'provider';
 
@@ -681,19 +723,19 @@ class _ProviderChatScreenState extends State<ProviderChatScreen>
               ),
               child: _isSending
                   ? Padding(
-                      padding: EdgeInsets.all(12.w),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
+                padding: EdgeInsets.all(12.w),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
                   : Icon(
-                      Icons.send,
-                      color: (_isTyping && _chatInitialized)
-                          ? Colors.white
-                          : ColorConstant.moyoOrange,
-                      size: 20.sp,
-                    ),
+                Icons.send,
+                color: (_isTyping && _chatInitialized)
+                    ? Colors.white
+                    : ColorConstant.moyoOrange,
+                size: 20.sp,
+              ),
             ),
           ),
         ],

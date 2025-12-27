@@ -38,6 +38,9 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   double? _selectedLatitude;
   double? _selectedLongitude;
 
+  // Track if location validation error should be shown
+  bool _showLocationError = false;
+
   @override
   void dispose() {
     _addressLine1Controller.dispose();
@@ -63,6 +66,11 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     if (value.trim().length > 200) {
       return 'Address must not exceed 200 characters';
     }
+    // Check for valid characters (alphanumeric, spaces, common punctuation)
+    final addressRegex = RegExp(r"^[a-zA-Z0-9\s,./\-#()]+$");
+    if (!addressRegex.hasMatch(value.trim())) {
+      return 'Address contains invalid characters';
+    }
     return null;
   }
 
@@ -71,14 +79,27 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       if (value.trim().length > 200) {
         return 'Address must not exceed 200 characters';
       }
+      // Check for valid characters
+      final addressRegex = RegExp(r"^[a-zA-Z0-9\s,./\-#()]+$");
+      if (!addressRegex.hasMatch(value.trim())) {
+        return 'Address contains invalid characters';
+      }
     }
     return null;
   }
 
   String? _validateLandmark(String? value) {
     if (value != null && value.trim().isNotEmpty) {
+      if (value.trim().length < 2) {
+        return 'Landmark must be at least 2 characters';
+      }
       if (value.trim().length > 100) {
         return 'Landmark must not exceed 100 characters';
+      }
+      // Check for valid characters
+      final landmarkRegex = RegExp(r"^[a-zA-Z0-9\s,./\-#()]+$");
+      if (!landmarkRegex.hasMatch(value.trim())) {
+        return 'Landmark contains invalid characters';
       }
     }
     return null;
@@ -94,10 +115,14 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     if (value.trim().length > 50) {
       return 'City name must not exceed 50 characters';
     }
-    // Check if city contains only letters, spaces, hyphens, and apostrophes
-    final cityRegex = RegExp(r"^[a-zA-Z\s\-']+$");
+    // Check if city contains only letters, spaces, hyphens, apostrophes, and periods
+    final cityRegex = RegExp(r"^[a-zA-Z\s\-'.]+$");
     if (!cityRegex.hasMatch(value.trim())) {
       return 'City name can only contain letters';
+    }
+    // Check for consecutive spaces or special characters
+    if (value.trim().contains(RegExp(r'\s{2,}'))) {
+      return 'City name has invalid spacing';
     }
     return null;
   }
@@ -112,10 +137,14 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     if (value.trim().length > 50) {
       return 'State name must not exceed 50 characters';
     }
-    // Check if state contains only letters, spaces, hyphens, and apostrophes
-    final stateRegex = RegExp(r"^[a-zA-Z\s\-']+$");
+    // Check if state contains only letters, spaces, hyphens, apostrophes, and periods
+    final stateRegex = RegExp(r"^[a-zA-Z\s\-'.]+$");
     if (!stateRegex.hasMatch(value.trim())) {
       return 'State name can only contain letters';
+    }
+    // Check for consecutive spaces
+    if (value.trim().contains(RegExp(r'\s{2,}'))) {
+      return 'State name has invalid spacing';
     }
     return null;
   }
@@ -132,13 +161,22 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       return 'Pincode must contain only numbers';
     }
 
-    // Check pincode length (India has 6 digits, adjust based on your requirements)
+    // Check pincode length (flexible for different countries)
     if (cleanedValue.length < 4) {
       return 'Pincode must be at least 4 digits';
     }
-    if (cleanedValue.length > 6) {
+    if (cleanedValue.length > 10) {
       return 'Pincode must not exceed 10 digits';
     }
+
+    // Check for invalid patterns (all zeros, all same digit)
+    if (RegExp(r'^0+$').hasMatch(cleanedValue)) {
+      return 'Invalid pincode';
+    }
+    if (RegExp(r'^(\d)\1+$').hasMatch(cleanedValue)) {
+      return 'Pincode cannot have all same digits';
+    }
+
     return null;
   }
 
@@ -152,19 +190,20 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     if (value.trim().length > 50) {
       return 'Country name must not exceed 50 characters';
     }
-    // Check if country contains only letters, spaces, hyphens, and apostrophes
-    final countryRegex = RegExp(r"^[a-zA-Z\s\-']+$");
+    // Check if country contains only letters, spaces, hyphens, apostrophes, and periods
+    final countryRegex = RegExp(r"^[a-zA-Z\s\-'.]+$");
     if (!countryRegex.hasMatch(value.trim())) {
       return 'Country name can only contain letters';
+    }
+    // Check for consecutive spaces
+    if (value.trim().contains(RegExp(r'\s{2,}'))) {
+      return 'Country name has invalid spacing';
     }
     return null;
   }
 
-  String? _validateLocation() {
-    if (_selectedLatitude == null || _selectedLongitude == null) {
-      return 'Please select location on map';
-    }
-    return null;
+  bool _validateLocation() {
+    return _selectedLatitude != null && _selectedLongitude != null;
   }
 
   Future<String?> _getAuthToken() async {
@@ -194,6 +233,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
         setState(() {
           _selectedLatitude = result['latitude'] as double?;
           _selectedLongitude = result['longitude'] as double?;
+          _showLocationError = false; // Reset error state
 
           // Update latitude/longitude fields
           if (_selectedLatitude != null) {
@@ -237,12 +277,14 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   }
 
   Future<void> _submitAddress() async {
-    // Validate location first
-    final locationError = _validateLocation();
-    if (locationError != null) {
+    // Show location error if not selected
+    if (!_validateLocation()) {
+      setState(() {
+        _showLocationError = true;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(locationError),
+          content: Text('Please select location on map'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
         ),
@@ -250,6 +292,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       return;
     }
 
+    // Validate form
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -281,16 +324,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       final url = Uri.parse('$base_url/api/user/addresses');
 
       // Parse latitude and longitude with null checks
-      double? latitude;
-      double? longitude;
-
-      if (_latitudeController.text.trim().isNotEmpty) {
-        latitude = double.tryParse(_latitudeController.text.trim());
-      }
-
-      if (_longitudeController.text.trim().isNotEmpty) {
-        longitude = double.tryParse(_longitudeController.text.trim());
-      }
+      double latitude = _selectedLatitude ?? 0.0;
+      double longitude = _selectedLongitude ?? 0.0;
 
       final body = {
         'type': _addressType,
@@ -301,8 +336,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
         'state': _stateController.text.trim(),
         'pincode': _pincodeController.text.trim().replaceAll(' ', ''),
         'country': _countryController.text.trim(),
-        'latitude': latitude ?? 0.0,
-        'longitude': longitude ?? 0.0,
+        'latitude': latitude,
+        'longitude': longitude,
         'is_default': _isDefault,
       };
 
@@ -442,7 +477,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Map Location Button
+              // Map Location Button with Error State
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -450,11 +485,12 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                   color: ColorConstant.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color:
-                        _selectedLatitude == null || _selectedLongitude == null
-                        ? Colors.red.withOpacity(0.5)
-                        : ColorConstant.moyoOrange.withOpacity(0.3),
-                    width: 1,
+                    color: _showLocationError && !_validateLocation()
+                        ? Colors.red
+                        : (_validateLocation()
+                        ? ColorConstant.moyoOrange.withOpacity(0.3)
+                        : Colors.grey.withOpacity(0.3)),
+                    width: _showLocationError && !_validateLocation() ? 2 : 1,
                   ),
                 ),
                 child: Column(
@@ -464,40 +500,49 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                       children: [
                         Icon(
                           Icons.location_on,
-                          color:
-                              _selectedLatitude == null ||
-                                  _selectedLongitude == null
+                          color: _showLocationError && !_validateLocation()
                               ? Colors.red
-                              : ColorConstant.moyoOrange,
+                              : (_validateLocation()
+                              ? ColorConstant.moyoOrange
+                              : Colors.grey),
                           size: 24,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _selectedLatitude != null &&
-                                    _selectedLongitude != null
-                                ? 'Location Selected'
+                            _validateLocation()
+                                ? 'Location Selected ✓'
                                 : 'Select Location on Map *',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color:
-                                  _selectedLatitude == null ||
-                                      _selectedLongitude == null
+                              color: _showLocationError && !_validateLocation()
                                   ? Colors.red
-                                  : ColorConstant.onSurface,
+                                  : (_validateLocation()
+                                  ? ColorConstant.moyoGreen
+                                  : ColorConstant.onSurface),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    if (_selectedLatitude != null &&
-                        _selectedLongitude != null) ...[
+                    if (_validateLocation()) ...[
                       const SizedBox(height: 8),
                       Text(
                         'Lat: ${_selectedLatitude!.toStringAsFixed(6)}, '
-                        'Long: ${_selectedLongitude!.toStringAsFixed(6)}',
+                            'Long: ${_selectedLongitude!.toStringAsFixed(6)}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                    if (_showLocationError && !_validateLocation()) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Location is required',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 12),
@@ -506,15 +551,13 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _openMapPicker,
                         icon: Icon(
-                          _selectedLatitude != null &&
-                                  _selectedLongitude != null
+                          _validateLocation()
                               ? Icons.edit_location
                               : Icons.map,
                           size: 20,
                         ),
                         label: Text(
-                          _selectedLatitude != null &&
-                                  _selectedLongitude != null
+                          _validateLocation()
                               ? 'Change Location'
                               : 'Open Map',
                         ),
@@ -534,7 +577,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
               const SizedBox(height: 20),
 
               _buildTextField(
-                label: 'Address Line 1',
+                label: 'Address Line 1 *',
                 controller: _addressLine1Controller,
                 hint: 'Enter address line 1',
                 validator: _validateAddressLine1,
@@ -564,21 +607,23 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                 children: [
                   Expanded(
                     child: _buildTextField(
-                      label: 'City',
+                      label: 'City *',
                       controller: _cityController,
                       hint: 'Enter city',
                       validator: _validateCity,
                       maxLength: 50,
+                      textCapitalization: TextCapitalization.words,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildTextField(
-                      label: 'State',
+                      label: 'State *',
                       controller: _stateController,
                       hint: 'Enter state',
                       validator: _validateState,
                       maxLength: 50,
+                      textCapitalization: TextCapitalization.words,
                     ),
                   ),
                 ],
@@ -589,7 +634,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                 children: [
                   Expanded(
                     child: _buildTextField(
-                      label: 'Pincode',
+                      label: 'Pincode *',
                       controller: _pincodeController,
                       hint: 'Enter pincode',
                       keyboardType: TextInputType.number,
@@ -601,11 +646,12 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildTextField(
-                      label: 'Country',
+                      label: 'Country *',
                       controller: _countryController,
                       hint: 'Enter country',
                       validator: _validateCountry,
                       maxLength: 50,
+                      textCapitalization: TextCapitalization.words,
                     ),
                   ),
                 ],
@@ -618,7 +664,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                     child: _buildTextField(
                       label: 'Latitude',
                       controller: _latitudeController,
-                      hint: 'Auto-filled',
+                      hint: 'Auto-filled from map',
                       keyboardType: TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -630,7 +676,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                     child: _buildTextField(
                       label: 'Longitude',
                       controller: _longitudeController,
-                      hint: 'Auto-filled',
+                      hint: 'Auto-filled from map',
                       keyboardType: TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -669,21 +715,21 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: ColorConstant.white,
-                            strokeWidth: 2,
-                          ),
-                        )
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      color: ColorConstant.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                       : const Text(
-                          'Save Address',
-                          style: TextStyle(
-                            color: ColorConstant.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                    'Save Address',
+                    style: TextStyle(
+                      color: ColorConstant.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -703,6 +749,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     bool readOnly = false,
     int? maxLength,
     List<TextInputFormatter>? inputFormatters,
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -723,6 +770,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
           readOnly: readOnly,
           maxLength: maxLength,
           inputFormatters: inputFormatters,
+          textCapitalization: textCapitalization,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Colors.grey),
@@ -735,7 +784,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

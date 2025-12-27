@@ -279,7 +279,7 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(ImageConstant.loginBgImg, fit: BoxFit.cover),
+            child: Image.asset(ImageConstant.otpBgImg, fit: BoxFit.cover),
           ),
           SafeArea(
             child: SingleChildScrollView(
@@ -296,12 +296,8 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Spacer(),
-                        Image.asset(
-                          "assets/icons/app_icon_radius.png.png",
-                          width: 100.w,
-                          height: 100.h,
-                        ),
-                        SizedBox(height: 24.h),
+
+                        SizedBox(height: 135.h),
                         Text(
                           "Enter OTP",
                           style: AppTextStyle.robotoBold.copyWith(
@@ -465,7 +461,7 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
                             ),
                           ),
                         ),
-                        SizedBox(height: 16.h),
+                        SizedBox(height: 50.h),
                         SizedBox(
                           height: MediaQuery.of(context).viewInsets.bottom,
                         ),

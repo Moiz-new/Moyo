@@ -149,7 +149,6 @@ class ServiceProvider with ChangeNotifier {
       final user = providerData_raw?['user'] as Map<String, dynamic>?;
 
       if (serviceId == null) {
-        debugPrint('❌ No service_id in message');
         return;
       }
 
@@ -160,11 +159,7 @@ class ServiceProvider with ChangeNotifier {
           ? '$firstName $lastName'.trim()
           : (user?['username'] ?? 'Provider #$bidId');
 
-      debugPrint('📥 Service Accepted Notification:');
-      debugPrint('   Service ID: $serviceId');
-      debugPrint('   Bid ID: ${bidId ?? "N/A"}');
-      debugPrint('   Provider: $providerName');
-      debugPrint('   Amount: ${amount ?? "N/A"}');
+
 
       final providerData = {
         'serviceId': serviceId,

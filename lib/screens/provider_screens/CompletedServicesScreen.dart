@@ -28,18 +28,27 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
   }
 
   Future<void> _loadTokenAndFetchServices() async {
-    final prefs = await SharedPreferences.getInstance();
-    token = prefs.getString('provider_auth_token');
-    if (token != null) {
-      await _fetchCompletedServices();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('provider_auth_token');
+      if (token != null) {
+        await _fetchCompletedServices();
+      }
+    } catch (e) {
+      print('Error loading token: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
-    setState(() {
-      isLoading = false;
-    });
   }
 
   Future<void> _fetchCompletedServices() async {
     try {
+      if (token == null) return;
+
       final response = await http.get(
         Uri.parse('$base_url/bid/api/service/provider-service-complete'),
         headers: {
@@ -48,72 +57,105 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
         },
       );
 
-      print(token);
+      print('Token: $token');
+      print('Response: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          services = data['services'] ?? [];
-        });
+        if (mounted) {
+          setState(() {
+            services = data['services'] ?? [];
+          });
+        }
+      } else {
+        print('Error: ${response.statusCode}');
       }
     } catch (e) {
-      // Handle error
+      print('Error fetching services: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load services'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _showRatingDialog(dynamic service) async {
-    final customer = service['customer'];
-    final userId = service['user_id']?.toString();
-    final serviceId = service['id']?.toString();
+    try {
+      if (service == null) return;
 
-    if (userId == null || serviceId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Unable to rate this service. Missing required information.',
-          ),
-          backgroundColor: ColorConstant.appColor,
-        ),
+      final customer = service['customer'];
+      if (customer == null) {
+        _showErrorSnackBar('Customer information not available');
+        return;
+      }
+
+      final userId = service['user_id']?.toString();
+      final serviceId = service['id']?.toString();
+
+      if (userId == null || userId.isEmpty || serviceId == null || serviceId.isEmpty) {
+        _showErrorSnackBar('Unable to rate this service. Missing required information.');
+        return;
+      }
+
+      final firstName = customer['firstname']?.toString() ?? '';
+      final lastName = customer['lastname']?.toString() ?? '';
+      final customerName = '$firstName $lastName'.trim();
+
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return ProviderRatingDialog(
+            serviceId: serviceId,
+            userId: userId,
+            providerName: customerName.isNotEmpty ? customerName : 'Customer',
+          );
+        },
       );
-      return;
-    }
 
-    final customerName =
-        '${customer['firstname'] ?? ''} ${customer['lastname'] ?? ''}'.trim();
-
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return ProviderRatingDialog(
-          serviceId: serviceId,
-          userId: userId,
-          providerName: customerName.isNotEmpty ? customerName : 'Customer',
-        );
-      },
-    );
-
-    if (result == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8.w),
-              Text('Rating submitted successfully!'),
-            ],
-          ),
-          backgroundColor: ColorConstant.moyoGreen,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      // CHANGE HERE: Call _fetchCompletedServicesWithoutLoading instead
-      await _fetchCompletedServicesWithoutLoading();
+      if (result == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8.w),
+                  Text('Rating submitted successfully!'),
+                ],
+              ),
+              backgroundColor: ColorConstant.moyoGreen,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        await _fetchCompletedServicesWithoutLoading();
+      }
+    } catch (e) {
+      print('Error showing rating dialog: $e');
+      _showErrorSnackBar('An error occurred');
     }
   }
 
-  // Add this new method after _fetchCompletedServices
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: ColorConstant.appColor,
+        ),
+      );
+    }
+  }
+
   Future<void> _fetchCompletedServicesWithoutLoading() async {
     try {
+      if (token == null) return;
+
       final response = await http.get(
         Uri.parse('$base_url/bid/api/service/provider-service-complete'),
         headers: {
@@ -122,26 +164,31 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
         },
       );
 
+      print("Response: .....${response.body}");
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        setState(() {
-          services = data['services'] ?? [];
-          // Don't change isLoading here
-        });
+        if (mounted) {
+          setState(() {
+            services = data['services'] ?? [];
+          });
+        }
       }
     } catch (e) {
-      // Handle error
+      print('Error fetching services: $e');
     }
   }
 
   void _toggleExpand(int index) {
-    setState(() {
-      if (expandedCards.contains(index)) {
-        expandedCards.remove(index);
-      } else {
-        expandedCards.add(index);
-      }
-    });
+    if (mounted) {
+      setState(() {
+        if (expandedCards.contains(index)) {
+          expandedCards.remove(index);
+        } else {
+          expandedCards.add(index);
+        }
+      });
+    }
   }
 
   @override
@@ -166,14 +213,18 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
           : services.isEmpty
           ? _buildEmptyState()
           : RefreshIndicator(
-              onRefresh: _fetchCompletedServices,
-              child: ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                itemCount: services.length,
-                itemBuilder: (context, index) =>
-                    _buildServiceCard(services[index], index),
-              ),
-            ),
+        onRefresh: _fetchCompletedServices,
+        child: ListView.builder(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          itemCount: services.length,
+          itemBuilder: (context, index) {
+            final service = services[index];
+            return service != null
+                ? _buildServiceCard(service, index)
+                : SizedBox.shrink();
+          },
+        ),
+      ),
     );
   }
 
@@ -192,7 +243,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
           ),
           SizedBox(height: 16.h),
           Text(
-            'Loading completed services...',
+            'Loading services...',
             style: TextStyle(fontSize: 16.sp, color: ColorConstant.onSurface),
           ),
         ],
@@ -212,7 +263,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
           ),
           SizedBox(height: 16.h),
           Text(
-            'No completed services yet',
+            'No services yet',
             style: TextStyle(
               fontSize: 20.sp,
               fontWeight: FontWeight.w600,
@@ -221,7 +272,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
           ),
           SizedBox(height: 8.h),
           Text(
-            'Your completed services will appear here',
+            'Your services will appear here',
             style: TextStyle(fontSize: 16.sp, color: ColorConstant.onSurface),
           ),
         ],
@@ -229,11 +280,45 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
     );
   }
 
-  Widget _buildServiceCard(service, int index) {
+  Widget _buildServiceCard(dynamic service, int index) {
+    if (service == null) return SizedBox.shrink();
+
     final customer = service['customer'];
-    final dynamicFields = service['dynamic_fields'] ?? {};
+    if (customer == null) return SizedBox.shrink();
+
+    final dynamicFields = service['dynamic_fields'] as Map<String, dynamic>? ?? {};
     final isExpanded = expandedCards.contains(index);
-    final ratingGiven = service['rating_given'] ?? false; // Get rating status
+    final status = service['status']?.toString() ?? 'unknown';
+    final isCancelled = status == 'cancelled';
+    final isCompleted = status == 'completed';
+    final ratingGiven = service['rating_given'] == true;
+
+    // Determine colors and text based on status
+    final headerColor = isCancelled
+        ? Colors.red
+        : ColorConstant.moyoGreen;
+
+    final statusIcon = isCancelled
+        ? Icons.cancel
+        : Icons.verified;
+
+    final statusText = isCancelled
+        ? 'Cancelled'
+        : 'Completed';
+
+    final statusDate = isCancelled
+        ? (service['cancelled_at'] != null
+        ? _formatDate(service['cancelled_at'].toString())
+        : (service['updated_at'] != null
+        ? _formatDate(service['updated_at'].toString())
+        : ''))
+        : (service['ended_at'] != null
+        ? _formatDate(service['ended_at'].toString())
+        : '');
+
+    final serviceTitle = service['title']?.toString() ?? 'Service';
+    final finalAmount = service['final_amount']?.toString() ??
+        service['budget']?.toString() ?? '0';
 
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
@@ -261,7 +346,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
               width: double.infinity,
               padding: EdgeInsets.all(20.w),
               decoration: BoxDecoration(
-                color: ColorConstant.moyoGreen,
+                color: headerColor,
                 borderRadius: BorderRadius.vertical(
                   top: Radius.circular(16.r),
                   bottom: isExpanded ? Radius.zero : Radius.circular(16.r),
@@ -273,8 +358,8 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
                     radius: 20.r,
                     backgroundColor: ColorConstant.white,
                     child: Icon(
-                      Icons.verified,
-                      color: ColorConstant.moyoGreen,
+                      statusIcon,
+                      color: headerColor,
                       size: 20.sp,
                     ),
                   ),
@@ -284,7 +369,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${service['title'] ?? 'Service'}',
+                          serviceTitle,
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w700,
@@ -292,7 +377,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
                           ),
                         ),
                         Text(
-                          'Completed • ${service['ended_at'] != null ? _formatDate(service['ended_at']) : ''}',
+                          '$statusText${statusDate.isNotEmpty ? ' • $statusDate' : ''}',
                           style: TextStyle(
                             fontSize: 13.sp,
                             color: ColorConstant.white.withOpacity(0.9),
@@ -311,7 +396,7 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
                       borderRadius: BorderRadius.circular(20.r),
                     ),
                     child: Text(
-                      '₹${service['budget'] ?? '0'}',
+                      '₹$finalAmount',
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
@@ -338,225 +423,23 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
               child: Column(
                 children: [
                   // Customer Info
-                  Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(24.r),
-                        child: customer['image'] != null
-                            ? Image.network(
-                                customer['image'],
-                                width: 48.w,
-                                height: 48.h,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  width: 48.w,
-                                  height: 48.h,
-                                  color: ColorConstant.buttonBg,
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 24.sp,
-                                    color: ColorConstant.darkPrimary,
-                                  ),
-                                ),
-                              )
-                            : Container(
-                                width: 48.w,
-                                height: 48.h,
-                                color: ColorConstant.buttonBg,
-                                child: Icon(
-                                  Icons.person,
-                                  size: 24.sp,
-                                  color: ColorConstant.darkPrimary,
-                                ),
-                              ),
-                      ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${customer['firstname'] ?? ''} ${customer['lastname'] ?? ''}',
-                              style: TextStyle(
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w600,
-                                color: ColorConstant.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildCustomerInfo(customer),
 
                   SizedBox(height: 16.h),
 
                   // Service Details
-                  _buildDetailRow(
-                    Icons.location_on_outlined,
-                    'Location',
-                    service['location'] ?? '',
-                  ),
-                  SizedBox(height: 12.h),
-                  _buildDetailRow(
-                    Icons.schedule_outlined,
-                    'Duration',
-                    '${service['duration_value'] ?? 0} ${service['duration_unit'] ?? 'hr'}',
-                  ),
-                  SizedBox(height: 12.h),
-                  _buildDetailRow(
-                    Icons.access_time_outlined,
-                    'Scheduled',
-                    _formatDateTime(
-                      service['schedule_date'],
-                      service['schedule_time'],
-                    ),
-                  ),
+                  _buildServiceDetails(service),
 
-                  if (dynamicFields.isNotEmpty) ...[
-                    SizedBox(height: 16.h),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16.w),
-                      decoration: BoxDecoration(
-                        color: ColorConstant.moyoOrangeFade,
-                        borderRadius: BorderRadius.circular(12.r),
-                        border: Border.all(color: ColorConstant.buttonBg),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ...dynamicFields.entries.map<Widget>((entry) {
-                            return Padding(
-                              padding: EdgeInsets.symmetric(vertical: 4.h),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.circle,
-                                    size: 6.sp,
-                                    color: ColorConstant.moyoGreen,
-                                  ),
-                                  SizedBox(width: 8.w),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '${entry.key}:',
-                                          style: TextStyle(
-                                            fontSize: 13.sp,
-                                            fontWeight: FontWeight.w600,
-                                            color: ColorConstant.onSurface,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${entry.value}',
-                                          style: TextStyle(
-                                            fontSize: 14.sp,
-                                            color: ColorConstant.onSurface,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    ),
-                  ],
+                  // Show cancellation reason if cancelled
+                  if (isCancelled && service['cancel_reason'] != null)
+                    _buildCancellationReason(service['cancel_reason'].toString()),
 
-                  // Rating Section - Only show if rating NOT given
-                  if (!ratingGiven) ...[
-                    SizedBox(height: 20.h),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(16.w),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12.r),
-                        border: Border.all(
-                          color: Color(0xFFFFA726).withOpacity(0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8.w),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                                child: Icon(
-                                  Icons.star_rate_rounded,
-                                  color: Color(0xFFFFA726),
-                                  size: 24.sp,
-                                ),
-                              ),
-                              SizedBox(width: 12.w),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Rate Your Experience',
-                                      style: TextStyle(
-                                        fontSize: 15.sp,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF1D1B20),
-                                      ),
-                                    ),
-                                    Text(
-                                      'Share your feedback about this service',
-                                      style: TextStyle(
-                                        fontSize: 12.sp,
-                                        color: Color(0xFF7A7A7A),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12.h),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () => _showRatingDialog(service),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFFFFA726),
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: 12.h),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                                elevation: 2,
-                              ),
-                              icon: Icon(Icons.rate_review, size: 18.sp),
-                              label: Text(
-                                'Rate Customer',
-                                style: TextStyle(
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  if (dynamicFields.isNotEmpty)
+                    _buildDynamicFields(dynamicFields),
+
+                  // Rating Section - Only show if completed AND rating NOT given
+                  if (isCompleted && !ratingGiven)
+                    _buildRatingSection(service),
                 ],
               ),
             ),
@@ -566,6 +449,293 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
             duration: Duration(milliseconds: 300),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerInfo(dynamic customer) {
+    final imageUrl = customer['image']?.toString();
+    final firstName = customer['firstname']?.toString() ?? '';
+    final lastName = customer['lastname']?.toString() ?? '';
+    final fullName = '$firstName $lastName'.trim();
+
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(24.r),
+          child: imageUrl != null && imageUrl.isNotEmpty
+              ? Image.network(
+            imageUrl,
+            width: 48.w,
+            height: 48.h,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+          )
+              : _buildDefaultAvatar(),
+        ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                fullName.isNotEmpty ? fullName : 'Customer',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                  color: ColorConstant.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Container(
+      width: 48.w,
+      height: 48.h,
+      color: ColorConstant.buttonBg,
+      child: Icon(
+        Icons.person,
+        size: 24.sp,
+        color: ColorConstant.darkPrimary,
+      ),
+    );
+  }
+
+  Widget _buildServiceDetails(dynamic service) {
+    final location = service['location']?.toString();
+    final durationValue = service['duration_value'];
+    final durationUnit = service['duration_unit']?.toString();
+    final scheduleDate = service['schedule_date']?.toString();
+    final scheduleTime = service['schedule_time']?.toString();
+
+    return Column(
+      children: [
+        if (location != null && location.isNotEmpty)
+          _buildDetailRow(
+            Icons.location_on_outlined,
+            'Location',
+            location,
+          ),
+
+        if (durationValue != null && durationUnit != null) ...[
+          SizedBox(height: 12.h),
+          _buildDetailRow(
+            Icons.schedule_outlined,
+            'Duration',
+            '$durationValue ${durationUnit}',
+          ),
+        ],
+
+        if (scheduleDate != null && scheduleTime != null) ...[
+          SizedBox(height: 12.h),
+          _buildDetailRow(
+            Icons.access_time_outlined,
+            'Scheduled',
+            _formatDateTime(scheduleDate, scheduleTime),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCancellationReason(String reason) {
+    return Padding(
+      padding: EdgeInsets.only(top: 16.h),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: Colors.red.shade200),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18.sp,
+                  color: Colors.red.shade700,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  'Cancellation Reason',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              reason,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: ColorConstant.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDynamicFields(Map<String, dynamic> dynamicFields) {
+    return Padding(
+      padding: EdgeInsets.only(top: 16.h),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: ColorConstant.moyoOrangeFade,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: ColorConstant.buttonBg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: dynamicFields.entries.map<Widget>((entry) {
+            final key = entry.key?.toString() ?? '';
+            final value = entry.value?.toString() ?? '';
+
+            if (key.isEmpty) return SizedBox.shrink();
+
+            return Padding(
+              padding: EdgeInsets.symmetric(vertical: 4.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.circle,
+                    size: 6.sp,
+                    color: ColorConstant.moyoGreen,
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$key:',
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            color: ColorConstant.onSurface,
+                          ),
+                        ),
+                        if (value.isNotEmpty)
+                          Text(
+                            value,
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              color: ColorConstant.onSurface,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRatingSection(dynamic service) {
+    return Padding(
+      padding: EdgeInsets.only(top: 20.h),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: Color(0xFFFFA726).withOpacity(0.3),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(
+                    Icons.star_rate_rounded,
+                    color: Color(0xFFFFA726),
+                    size: 24.sp,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rate Your Experience',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1D1B20),
+                        ),
+                      ),
+                      Text(
+                        'Share your feedback about this service',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: Color(0xFF7A7A7A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showRatingDialog(service),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFFFA726),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  elevation: 2,
+                ),
+                icon: Icon(Icons.rate_review, size: 18.sp),
+                label: Text(
+                  'Rate Customer',
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -610,14 +780,25 @@ class _CompletedServicesScreenState extends State<CompletedServicesScreen> {
   }
 
   String _formatDate(String? dateString) {
-    if (dateString == null) return '';
-    final date = DateTime.parse(dateString).toLocal();
-    return '${date.day}/${date.month}/${date.year}';
+    if (dateString == null || dateString.isEmpty) return '';
+    try {
+      final date = DateTime.parse(dateString).toLocal();
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      print('Error parsing date: $e');
+      return '';
+    }
   }
 
   String _formatDateTime(String? dateString, String? timeString) {
-    if (dateString == null || timeString == null) return '';
-    final date = DateTime.parse(dateString).toLocal();
-    return '${_formatDate(dateString)} at $timeString';
+    if (dateString == null || dateString.isEmpty ||
+        timeString == null || timeString.isEmpty) return '';
+    try {
+      final formattedDate = _formatDate(dateString);
+      return formattedDate.isNotEmpty ? '$formattedDate at $timeString' : '';
+    } catch (e) {
+      print('Error formatting datetime: $e');
+      return '';
+    }
   }
 }

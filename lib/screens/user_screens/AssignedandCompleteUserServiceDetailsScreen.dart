@@ -82,8 +82,8 @@ class _AssignedandCompleteUserServiceDetailsScreenState
 
       // CHANGED: Update every 1 second instead of 10
       _locationUpdateTimer = Timer.periodic(const Duration(seconds: 1), (
-          timer,
-          ) {
+        timer,
+      ) {
         _fetchServiceDetails(); // ADDED: Fetch service details too
         _fetchLocationDetails();
       });
@@ -97,15 +97,11 @@ class _AssignedandCompleteUserServiceDetailsScreenState
 
   void _setupRealtimeListeners() {
     try {
-      // Listen for service updates
-      // Subscribe karne ke liye subject name adjust karein according to your NATS setup
       final serviceUpdateSubject = 'service.update.${widget.serviceId}';
-      debugPrint('🔔 Subscribing to: $serviceUpdateSubject');
 
       _serviceUpdateSubscription = _natsService.subscribe(
         serviceUpdateSubject,
-            (message) {
-          debugPrint('📨 Service update received: $message');
+        (message) {
           try {
             final data = jsonDecode(message);
             if (mounted) {
@@ -113,22 +109,17 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                 _serviceData = data;
               });
             }
-            debugPrint('✅ Service data updated automatically');
-          } catch (e) {
-            debugPrint('❌ Error parsing service update: $e');
-          }
+          } catch (e) {}
         },
       );
 
       // Listen for location updates
       final locationUpdateSubject =
           'service.location.update.${widget.serviceId}';
-      debugPrint('🔔 Subscribing to: $locationUpdateSubject');
 
       _locationUpdateSubscription = _natsService.subscribe(
         locationUpdateSubject,
-            (message) {
-          debugPrint('📍 Location update received: $message');
+        (message) {
           try {
             final data = jsonDecode(message);
             if (mounted) {
@@ -139,10 +130,7 @@ class _AssignedandCompleteUserServiceDetailsScreenState
             if (_isMapReady) {
               _setupMap(animate: true);
             }
-            debugPrint('✅ Location updated automatically');
-          } catch (e) {
-            debugPrint('❌ Error parsing location update: $e');
-          }
+          } catch (e) {}
         },
       );
 
@@ -150,21 +138,16 @@ class _AssignedandCompleteUserServiceDetailsScreenState
       final genericServiceSubject = 'service.updates';
       _genericUpdateSubscription = _natsService.subscribe(
         genericServiceSubject,
-            (message) {
+        (message) {
           try {
             final data = jsonDecode(message);
             if (data['service_id'] == widget.serviceId) {
-              debugPrint('📨 Generic service update for this service');
               _fetchServiceDetails();
             }
-          } catch (e) {
-            debugPrint('❌ Error parsing generic update: $e');
-          }
+          } catch (e) {}
         },
       );
-    } catch (e) {
-      debugPrint('❌ Error setting up real-time listeners: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _fetchServiceDetails() async {
@@ -183,7 +166,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
       }
 
       final reqData = {'service_id': widget.serviceId};
-      debugPrint('📤 Sending request to service.user.info.details: $reqData');
 
       final response = await _natsService.request(
         'service.user.info.details',
@@ -194,23 +176,14 @@ class _AssignedandCompleteUserServiceDetailsScreenState
       if (response != null && response.isNotEmpty) {
         final decodedData = jsonDecode(response);
 
-        // ADDED: Debug print to see the actual structure
-        debugPrint('🔍 Full Response Structure: ${jsonEncode(decodedData)}');
-        debugPrint(
-          '🔍 user_rating_given value: ${decodedData['user_rating_given']}',
-        );
-        debugPrint('🔍 Response keys: ${decodedData.keys.toList()}');
-
         // Check if response has 'data' wrapper
         Map<String, dynamic> serviceData;
         if (decodedData.containsKey('data')) {
           // Response is wrapped in 'data'
           serviceData = decodedData['data'];
-          debugPrint('✅ Response has data wrapper');
         } else {
           // Response is at root level
           serviceData = decodedData;
-          debugPrint('✅ Response is at root level');
         }
 
         if (mounted) {
@@ -222,10 +195,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
             }
           });
         }
-        debugPrint('✅ Service details received');
-        debugPrint(
-          '✅ user_rating_given in _serviceData: ${_serviceData?['user_rating_given']}',
-        );
       } else {
         if (mounted && isFirstLoad) {
           setState(() {
@@ -241,7 +210,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
           _isLoading = false;
         });
       }
-      debugPrint('❌ Error fetching service details: $e');
     }
   }
 
@@ -270,14 +238,13 @@ class _AssignedandCompleteUserServiceDetailsScreenState
       }
     } catch (e) {
       // CHANGED: Quietly log error, don't show to user
-      debugPrint('⚠️ Error fetching location details: $e');
     }
   }
 
   Future<List<LatLng>> _getDirectionsRoute(
-      LatLng origin,
-      LatLng destination,
-      ) async {
+    LatLng origin,
+    LatLng destination,
+  ) async {
     try {
       final String url =
           'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$GOOGLE_MAPS_API_KEY&mode=driving';
@@ -444,16 +411,16 @@ class _AssignedandCompleteUserServiceDetailsScreenState
   }
 
   double _calculateDistance(
-      double lat1,
-      double lon1,
-      double lat2,
-      double lon2,
-      ) {
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const p = 0.017453292519943295;
     final a =
         0.5 -
-            cos((lat2 - lat1) * p) / 2 +
-            cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
+        cos((lat2 - lat1) * p) / 2 +
+        cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
     return 12742 * asin(sqrt(a));
   }
 
@@ -499,9 +466,9 @@ class _AssignedandCompleteUserServiceDetailsScreenState
   }
 
   List<String> _extractParticulars(
-      Map<String, dynamic>? dynamicFields,
-      Map<String, dynamic>? serviceData,
-      ) {
+    Map<String, dynamic>? dynamicFields,
+    Map<String, dynamic>? serviceData,
+  ) {
     List<String> particulars = [];
 
     if (dynamicFields != null) {
@@ -545,44 +512,22 @@ class _AssignedandCompleteUserServiceDetailsScreenState
 
   @override
   Widget build(BuildContext context) {
-    // ADDED: Better debugging
-    debugPrint('🔍 _serviceData keys: ${_serviceData?.keys.toList()}');
-    debugPrint('🔍 user_rating_given: ${_serviceData?['user_rating_given']}');
-    debugPrint(
-      '🔍 user_rating_given type: ${_serviceData?['user_rating_given'].runtimeType}',
-    );
-    debugPrint('🔍 user mobile: ${_serviceData?['user']?['mobile']}');
-    debugPrint('🔍 status: ${_serviceData?['status']}');
-
     // Handle user_rating_given safely
     final userRatingGiven = _serviceData?['user_rating_given'];
     final bool ratingGiven;
 
     if (userRatingGiven == null) {
       ratingGiven = false;
-      debugPrint('⚠️ user_rating_given is null, defaulting to false');
     } else if (userRatingGiven is bool) {
       ratingGiven = userRatingGiven;
-      debugPrint('✅ user_rating_given is bool: $ratingGiven');
     } else if (userRatingGiven is int) {
       ratingGiven = userRatingGiven == 1;
-      debugPrint(
-        '✅ user_rating_given is int ($userRatingGiven), converting to bool: $ratingGiven',
-      );
     } else if (userRatingGiven is String) {
       ratingGiven =
           userRatingGiven.toLowerCase() == 'true' || userRatingGiven == '1';
-      debugPrint(
-        '✅ user_rating_given is String ($userRatingGiven), converting to bool: $ratingGiven',
-      );
     } else {
       ratingGiven = false;
-      debugPrint(
-        '⚠️ user_rating_given has unexpected type: ${userRatingGiven.runtimeType}',
-      );
     }
-
-    debugPrint('✅ Final ratingGiven value: $ratingGiven');
 
     return Scaffold(
       backgroundColor: ColorConstant.moyoScaffoldGradient,
@@ -591,240 +536,241 @@ class _AssignedandCompleteUserServiceDetailsScreenState
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
           ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _isLoading = true;
-                  _errorMessage = null;
-                });
-                _initializeAndFetchData();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      )
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _isLoading = true;
+                        _errorMessage = null;
+                      });
+                      _initializeAndFetchData();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
           : Consumer3<ServiceProvider, BookProviderProvider, RazorpayProvider>(
-        builder:
-            (
-            context,
-            serviceProvider,
-            bookProviderProvider,
-            razorpayProvider,
-            child,
-            ) {
-          final user = _serviceData?['user'];
-          final dynamicFields = _serviceData?['dynamic_fields'];
-          final providerId = _serviceData?['assigned_provider_id']
-              ?.toString();
-
-          // Listen to payment success
-          if (razorpayProvider.paymentId != null &&
-              !razorpayProvider.isProcessing) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _handlePaymentSuccess(razorpayProvider.paymentId!);
-              razorpayProvider.resetPaymentState();
-            });
-          }
-
-          // Listen to payment error
-          if (razorpayProvider.errorMessage != null &&
-              !razorpayProvider.isProcessing) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showPaymentError(razorpayProvider.errorMessage!);
-              razorpayProvider.resetPaymentState();
-            });
-          }
-
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 16),
-                UserServiceDetails(
-                  serviceId: widget.serviceId,
-                  onCompleteService: () => _handleCompleteService(
+              builder:
+                  (
                     context,
+                    serviceProvider,
+                    bookProviderProvider,
                     razorpayProvider,
-                  ),
-                  providerId:
-                  _serviceData?['assigned_provider_id']
-                      ?.toString() ??
-                      'N/A',
-                  category: _serviceData?['category'] ?? 'N/A',
-                  subCategory: _serviceData?['service'] ?? 'N/A',
-                  date: _formatDate(_serviceData?['schedule_date']),
-                  pin: _serviceData?['status'] == "in_progress"
-                      ? (_serviceData?['end_otp'] ?? 'N/A')
-                      : (_serviceData?['start_otp'] ?? 'N/A'),
-                  providerPhone: user?['mobile'] ?? 'N/A',
-                  dp:
-                  user?['image'] ??
-                      'https://picsum.photos/200/200',
-                  name: user != null
-                      ? '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}'
-                      .trim()
-                      : 'N/A',
-                  rating: '4.5',
-                  status: _serviceData?['status'] ?? 'N/A',
-                  durationType: _serviceData?['service_mode'] == 'hrs'
-                      ? 'Hourly'
-                      : (_serviceData?['service_mode'] ?? 'N/A'),
-                  // CHANGED: Use the safely parsed boolean value
-                  userRatingGiven: ratingGiven,
-                  duration:
-                  _serviceData?['duration_value'] != null &&
-                      _serviceData?['duration_unit'] != null
-                      ? '${_serviceData!['duration_value']} ${_serviceData!['duration_unit']}'
-                      : 'N/A',
-                  price: _serviceData?['budget']?.toString() ?? 'N/A',
-                  address: _serviceData?['location'] ?? 'N/A',
-                  particular: _extractParticulars(
-                    dynamicFields,
-                    _serviceData,
-                  ),
-                  onSeeWorktime: () async {
-                    final prefs =
-                    await SharedPreferences.getInstance();
-                    final authToken =
-                        prefs.getString('auth_token') ?? '';
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ServiceTimerScreen(
-                          serviceId: widget.serviceId,
-                          durationValue:
-                          _serviceData?['duration_value'] ?? 1,
-                          durationUnit:
-                          _serviceData?['duration_unit'] ??
-                              'hours',
-                          categoryName:
-                          _serviceData?['category'] ?? 'N/A',
-                          subCategoryName:
-                          _serviceData?['service'] ?? 'N/A',
-                          authToken: authToken,
-                        ),
+                    child,
+                  ) {
+                    final user = _serviceData?['user'];
+                    final dynamicFields = _serviceData?['dynamic_fields'];
+                    final providerId = _serviceData?['assigned_provider_id']
+                        ?.toString();
+
+                    // Listen to payment success
+                    if (razorpayProvider.paymentId != null &&
+                        !razorpayProvider.isProcessing) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _handlePaymentSuccess(razorpayProvider.paymentId!);
+                        razorpayProvider.resetPaymentState();
+                      });
+                    }
+                    print("object");
+                    print(user?['user']['mobile'] ?? 'N/A');
+
+                    // Listen to payment error
+                    if (razorpayProvider.errorMessage != null &&
+                        !razorpayProvider.isProcessing) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _showPaymentError(razorpayProvider.errorMessage!);
+                        razorpayProvider.resetPaymentState();
+                      });
+                    }
+                    return SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 16),
+                          UserServiceDetails(
+                            serviceId: widget.serviceId,
+                            onCompleteService: () => _handleCompleteService(
+                              context,
+                              razorpayProvider,
+                            ),
+                            providerId:
+                                _serviceData?['assigned_provider_id']
+                                    ?.toString() ??
+                                'N/A',
+                            category: _serviceData?['category'] ?? 'N/A',
+                            subCategory: _serviceData?['service'] ?? 'N/A',
+                            date: _formatDate(_serviceData?['schedule_date']),
+                            pin: _serviceData?['status'] == "in_progress"
+                                ? (_serviceData?['end_otp'] ?? 'N/A')
+                                : (_serviceData?['start_otp'] ?? 'N/A'),
+                            providerPhone: user?['user']['mobile'] ?? 'N/A',
+                            dp:
+                                user?['image'] ??
+                                'https://picsum.photos/200/200',
+                            name: user != null
+                                ? '${user['user']['firstname'] ?? ''} ${user['user']['lastname'] ?? ''}'
+                                      .trim()
+                                : 'N/A',
+                            rating: '4.5',
+                            status: _serviceData?['status'] ?? 'N/A',
+                            durationType: _serviceData?['service_mode'] == 'hrs'
+                                ? 'Hourly'
+                                : (_serviceData?['service_mode'] ?? 'N/A'),
+                            // CHANGED: Use the safely parsed boolean value
+                            userRatingGiven: ratingGiven,
+                            duration:
+                                _serviceData?['duration_value'] != null &&
+                                    _serviceData?['duration_unit'] != null
+                                ? '${_serviceData!['duration_value']} ${_serviceData!['duration_unit']}'
+                                : 'N/A',
+                            price: _serviceData?['budget']?.toString() ?? 'N/A',
+                            address: _serviceData?['location'] ?? 'N/A',
+                            particular: _extractParticulars(
+                              dynamicFields,
+                              _serviceData,
+                            ),
+                            onSeeWorktime: () async {
+                              final prefs =
+                                  await SharedPreferences.getInstance();
+                              final authToken =
+                                  prefs.getString('auth_token') ?? '';
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ServiceTimerScreen(
+                                    serviceId: widget.serviceId,
+                                    durationValue:
+                                        _serviceData?['duration_value'] ?? 1,
+                                    durationUnit:
+                                        _serviceData?['duration_unit'] ??
+                                        'hours',
+                                    categoryName:
+                                        _serviceData?['category'] ?? 'N/A',
+                                    subCategoryName:
+                                        _serviceData?['service'] ?? 'N/A',
+                                    authToken: authToken,
+                                  ),
+                                ),
+                              );
+                            },
+                            description:
+                                _serviceData?['description'] ??
+                                'No description available',
+                          ),
+
+                          if (_locationData != null &&
+                              (_serviceData?['status'] ?? '') !=
+                                  "completed") ...[
+                            const SizedBox(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10.0,
+                              ),
+                              child: Container(
+                                height: 300,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: GoogleMap(
+                                    initialCameraPosition: CameraPosition(
+                                      target: LatLng(
+                                        double.parse(
+                                          _locationData!['latitude']
+                                                  ?.toString() ??
+                                              '0',
+                                        ),
+                                        double.parse(
+                                          _locationData!['longitude']
+                                                  ?.toString() ??
+                                              '0',
+                                        ),
+                                      ),
+                                      zoom: 13,
+                                    ),
+                                    markers: _markers,
+                                    polylines: _polylines,
+                                    circles: _circles,
+                                    myLocationButtonEnabled: false,
+                                    zoomControlsEnabled: false,
+                                    compassEnabled: false,
+                                    mapToolbarEnabled: false,
+                                    myLocationEnabled: false,
+                                    mapType: MapType.normal,
+                                    onMapCreated: (controller) {
+                                      _mapController = controller;
+                                      _isMapReady = true;
+                                      _setupMap();
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_arrivalTime != null) ...[
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.access_time,
+                                      color: Colors.black87,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Provider arriving in $_arrivalTime minutes',
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                          const SizedBox(height: 16),
+                        ],
                       ),
                     );
                   },
-                  description:
-                  _serviceData?['description'] ??
-                      'No description available',
-                ),
-
-                if (_locationData != null &&
-                    (_serviceData?['status'] ?? '') !=
-                        "completed") ...[
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10.0,
-                    ),
-                    child: Container(
-                      height: 300,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target: LatLng(
-                              double.parse(
-                                _locationData!['latitude']
-                                    ?.toString() ??
-                                    '0',
-                              ),
-                              double.parse(
-                                _locationData!['longitude']
-                                    ?.toString() ??
-                                    '0',
-                              ),
-                            ),
-                            zoom: 13,
-                          ),
-                          markers: _markers,
-                          polylines: _polylines,
-                          circles: _circles,
-                          myLocationButtonEnabled: false,
-                          zoomControlsEnabled: false,
-                          compassEnabled: false,
-                          mapToolbarEnabled: false,
-                          myLocationEnabled: false,
-                          mapType: MapType.normal,
-                          onMapCreated: (controller) {
-                            _mapController = controller;
-                            _isMapReady = true;
-                            _setupMap();
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_arrivalTime != null) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.access_time,
-                            color: Colors.black87,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Provider arriving in $_arrivalTime minutes',
-                          style: const TextStyle(
-                            color: Colors.black87,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-                const SizedBox(height: 16),
-              ],
             ),
-          );
-        },
-      ),
     );
   }
 
   void _handleCompleteService(
-      BuildContext context,
-      RazorpayProvider razorpayProvider,
-      ) {
+    BuildContext context,
+    RazorpayProvider razorpayProvider,
+  ) {
     final amount =
         double.tryParse(_serviceData?['budget']?.toString() ?? '0') ?? 0;
     // CHANGED: Access user from root level
@@ -853,8 +799,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
   }
 
   void _handlePaymentSuccess(String paymentId) {
-    debugPrint('✅ Payment completed successfully: $paymentId');
-
     // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

@@ -453,14 +453,14 @@ class _UserAppbarState extends State<UserAppbar> {
                           ),
                         ),
                         constraints: BoxConstraints(
-                          minWidth: 8,
-                          minHeight: 8,
+                          minWidth: 6,
+                          minHeight: 6,
                         ),
                         child: Center(
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
                             style: GoogleFonts.roboto(
-                              fontSize: 7,
+                              fontSize: 8,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -499,7 +499,7 @@ class _UserAppbarState extends State<UserAppbar> {
                       right: 8,
                       top: 8,
                       child: Container(
-                        padding: EdgeInsets.all(4),
+                        padding: EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: Colors.red,
                           shape: BoxShape.circle,
@@ -509,14 +509,14 @@ class _UserAppbarState extends State<UserAppbar> {
                           ),
                         ),
                         constraints: BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
+                          minWidth: 6,
+                          minHeight: 6,
                         ),
                         child: Center(
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
                             style: GoogleFonts.roboto(
-                              fontSize: 10,
+                              fontSize: 8,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),

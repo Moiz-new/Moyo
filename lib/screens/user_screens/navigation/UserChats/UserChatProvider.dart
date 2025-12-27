@@ -15,32 +15,45 @@ class UserChatProvider with ChangeNotifier {
   Subscription? _chatSubscription;
   final NatsService _natsService = NatsService();
 
+  // ✅ Track if currently active on chat screen
+  bool _isScreenActive = false;
+
   bool get isLoading => _isLoading;
-
   String? get error => _error;
-
   String? get chatId => _chatId;
-
   List<ChatMessage> get messages => _messages;
 
-  // Fetch chat history from NATS
-  Future<bool> fetchChatHistory({required String chatId}) async {
-    print("=== FETCHING CHAT HISTORY ===");
+  // ✅ Call this when user enters chat screen
+  void setScreenActive(bool isActive) {
+    _isScreenActive = isActive;
+    if (!isActive) {
+      print("📴 Chat screen inactive - stopping real-time updates");
+    } else {
+      print("📱 Chat screen active - real-time updates enabled");
+    }
+  }
+
+  // ✅ Modified fetchChatHistory to support silent mode (no loading indicator)
+  Future<bool> fetchChatHistory({required String chatId, bool silent = false}) async {
+    print("=== FETCHING CHAT HISTORY ${silent ? '(SILENT)' : ''} ===");
     print("Chat ID: $chatId");
 
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+    if (!silent) {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+    }
 
     try {
-      // Ensure NATS is connected
       if (!_natsService.isConnected) {
         print("NATS not connected, attempting to connect...");
         final connected = await _natsService.connect();
         if (!connected) {
-          _error = 'Failed to connect to messaging service';
-          _isLoading = false;
-          notifyListeners();
+          if (!silent) {
+            _error = 'Failed to connect to messaging service';
+            _isLoading = false;
+            notifyListeners();
+          }
           return false;
         }
       }
@@ -55,25 +68,37 @@ class UserChatProvider with ChangeNotifier {
       );
 
       if (responseStr == null) {
-        _error = 'No response from chat service';
-        _isLoading = false;
-        notifyListeners();
+        if (!silent) {
+          _error = 'No response from chat service';
+          _isLoading = false;
+          notifyListeners();
+        }
         return false;
       }
 
       final responseData = json.decode(responseStr);
-      print("✅ Received NATS Response:");
-      print(responseData);
+      print("✅ Received NATS Response: ${responseData['success']}");
 
-      if (responseData['success'] == true && responseData['messages'] != null) {
-        _messages.clear();
+      if (responseData['success'] == true && responseData['data'] != null) {
+        List<dynamic> messagesData = responseData['data'];
 
-        // Parse messages from NATS response
-        List<dynamic> messagesData = responseData['messages'];
+        // ✅ Track existing message IDs
+        Set<String> existingIds = _messages.map((m) => m.id).toSet();
+        bool hasNewMessages = false;
+
         for (var msgData in messagesData) {
           try {
             final chatMessage = ChatMessage.fromJson(msgData);
-            _messages.add(chatMessage);
+            if (!existingIds.contains(chatMessage.id)) {
+              _messages.add(chatMessage);
+              hasNewMessages = true;
+            } else {
+              // ✅ Update existing message (e.g., read status)
+              int index = _messages.indexWhere((m) => m.id == chatMessage.id);
+              if (index != -1) {
+                _messages[index] = chatMessage;
+              }
+            }
           } catch (e) {
             print("Error parsing message: $e");
           }
@@ -82,23 +107,36 @@ class UserChatProvider with ChangeNotifier {
         // Sort messages by timestamp (oldest first)
         _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-        print("✅ Loaded ${_messages.length} messages from history");
-        _isLoading = false;
-        notifyListeners();
+        if (hasNewMessages || !silent) {
+          print("✅ Loaded ${_messages.length} messages (${hasNewMessages ? 'NEW DATA' : 'NO CHANGES'})");
+        }
+
+        if (!silent) {
+          _isLoading = false;
+        }
+
+        // ✅ Only notify listeners if there are changes or it's not a silent fetch
+        if (hasNewMessages || !silent) {
+          notifyListeners();
+        }
+
         return true;
       } else {
-        _error = responseData['message'] ?? 'Failed to fetch chat history';
-        _isLoading = false;
-        notifyListeners();
+        if (!silent) {
+          _error = responseData['message'] ?? 'Failed to fetch chat history';
+          _isLoading = false;
+          notifyListeners();
+        }
         return false;
       }
     } catch (e, stackTrace) {
-      print("=== EXCEPTION in fetchChatHistory ===");
-      print("Error: $e");
-      print("Stack Trace: $stackTrace");
-      _error = 'Failed to load chat history: ${e.toString()}';
-      _isLoading = false;
-      notifyListeners();
+      print("Error in fetchChatHistory: $e");
+      if (!silent) {
+        print("Stack Trace: $stackTrace");
+        _error = 'Failed to load chat history: ${e.toString()}';
+        _isLoading = false;
+        notifyListeners();
+      }
       return false;
     }
   }
@@ -109,27 +147,27 @@ class UserChatProvider with ChangeNotifier {
       print("=== Subscribing to chat messages ===");
       print("Chat ID: $chatId");
 
-      // Ensure NATS is connected
       if (!_natsService.isConnected) {
         print("NATS not connected, attempting to connect...");
         await _natsService.connect();
       }
 
-      // Subscribe to new messages for this specific chat
-      _chatSubscription = _natsService.subscribe('chat.message.$chatId', (
-        message,
-      ) {
+      _chatSubscription = _natsService.subscribe('chat.message.$chatId', (message) {
+        // ✅ Only process if screen is active
+        if (!_isScreenActive) {
+          print("⏸️ Message received but screen inactive, skipping UI update");
+          return;
+        }
+
         try {
           final msgData = json.decode(message);
           print("📨 New message received: $msgData");
 
           final chatMessage = ChatMessage.fromJson(msgData);
 
-          // Check if message already exists (avoid duplicates)
           bool exists = _messages.any((m) => m.id == chatMessage.id);
           if (!exists) {
             _messages.add(chatMessage);
-            // Sort to maintain chronological order
             _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
             notifyListeners();
             print("✅ New message added to list: ${chatMessage.id}");
@@ -147,7 +185,6 @@ class UserChatProvider with ChangeNotifier {
     }
   }
 
-  // Initiate chat with provider
   // Initiate chat with provider
   Future<bool> initiateChat({
     required String serviceId,
@@ -176,7 +213,6 @@ class UserChatProvider with ChangeNotifier {
 
       print("Token found: ${token.substring(0, 20)}...");
 
-      // CHANGE 1: Validate inputs before API call
       if (serviceId.isEmpty || providerId.isEmpty) {
         print("ERROR: Service ID or Provider ID is empty");
         _error = 'Invalid service or provider information';
@@ -271,7 +307,6 @@ class UserChatProvider with ChangeNotifier {
           return false;
         }
       }
-      // CHANGE 2: Handle 500 error with retry mechanism
       else if (response.statusCode == 500 && retryCount < 2) {
         print("⚠️ Server error 500 - Retrying after 2 seconds...");
         await Future.delayed(Duration(seconds: 2));
@@ -281,7 +316,6 @@ class UserChatProvider with ChangeNotifier {
           retryCount: retryCount + 1,
         );
       }
-      // CHANGE 3: Better error messages for different status codes
       else {
         print("ERROR: API returned error status code ${response.statusCode}");
         String errorMessage;
@@ -330,7 +364,6 @@ class UserChatProvider with ChangeNotifier {
       print("Error: $e");
       print("Stack Trace: $stackTrace");
 
-      // CHANGE 4: Better error messages for different exceptions
       String errorMessage;
       if (e.toString().contains('timeout')) {
         errorMessage = 'Request timeout - Please check your connection';
@@ -395,16 +428,13 @@ class UserChatProvider with ChangeNotifier {
         final data = jsonDecode(response.body);
         print("Message sent successfully!");
 
-        // Parse and add the message to local list
         try {
           if (data['message'] != null) {
             final chatMessage = ChatMessage.fromJson(data['message']);
 
-            // Check if message already exists (avoid duplicates)
             bool exists = _messages.any((m) => m.id == chatMessage.id);
             if (!exists) {
               _messages.add(chatMessage);
-              // Sort to maintain chronological order
               _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
               print("Message added to local list: ${chatMessage.id}");
               notifyListeners();
@@ -414,7 +444,6 @@ class UserChatProvider with ChangeNotifier {
           }
         } catch (e) {
           print("Error parsing message: $e");
-          // Don't fail the whole operation if parsing fails
         }
 
         return true;
@@ -449,8 +478,8 @@ class UserChatProvider with ChangeNotifier {
     _error = null;
     _chatId = null;
     _messages = [];
+    _isScreenActive = false;
 
-    // Unsubscribe from NATS
     if (_chatSubscription != null && _chatId != null) {
       _natsService.unsubscribe('chat.message.$_chatId');
       _chatSubscription = null;
@@ -461,7 +490,6 @@ class UserChatProvider with ChangeNotifier {
 
   @override
   void dispose() {
-    // Unsubscribe from NATS
     if (_chatSubscription != null && _chatId != null) {
       _natsService.unsubscribe('chat.message.$_chatId');
     }
@@ -493,7 +521,6 @@ class ChatMessage {
     print("=== Parsing ChatMessage ===");
     print("Raw JSON: $json");
 
-    // Handle nested id structure
     String messageId = '';
     if (json['id'] != null) {
       if (json['id'] is Map) {
@@ -504,22 +531,31 @@ class ChatMessage {
     }
     print("Parsed ID: $messageId");
 
-    // Handle nested message structure: {"message": {"text": "hu"}}
     String messageText = '';
     if (json['message'] != null) {
       if (json['message'] is Map) {
         messageText = json['message']['text']?.toString() ?? '';
-      } else {
-        messageText = json['message'].toString();
+      } else if (json['message'] is String) {
+        messageText = json['message'];
       }
     }
+
+    if (messageText.isEmpty) {
+      print("⚠️ Warning: Message text is empty");
+      messageText = '';
+    }
+
     print("Parsed Message: $messageText");
 
-    // Parse other fields
     final chatId = json['chat_id']?.toString() ?? '';
     final senderId = json['sender_id']?.toString() ?? '';
-    final senderType = json['sender_type']?.toString() ?? '';
-    final isRead = json['is_read'] == true;
+
+    String senderType = '';
+    if (json['sender_type'] != null) {
+      senderType = json['sender_type'].toString().toLowerCase();
+    }
+
+    final isRead = json['is_read'] == true || json['is_read'] == 1;
 
     DateTime createdAt;
     try {
@@ -534,6 +570,7 @@ class ChatMessage {
     }
 
     print("Created ChatMessage successfully");
+    print("Sender Type: $senderType");
 
     return ChatMessage(
       id: messageId,

@@ -547,8 +547,6 @@ class UserServiceDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusLower = status.toLowerCase();
-    print(statusLower);
-    print("ratinggggg$userRatingGiven");
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
       child: Container(

@@ -11,6 +11,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../baseControllers/APis.dart';
 
@@ -1001,7 +1002,7 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
               _acceptReBid(context),
 
             // Cancel button - show for 'assigned' status
-         /*   if (statusLower == "assigned" || statusLower == "arrived")
+            /*   if (statusLower == "assigned" || statusLower == "arrived")
               _cancelTheService(context),*/
 
             // Task complete - show for 'started' or 'in_progress' status
@@ -1226,7 +1227,6 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
     );
   }
 
-
   Widget _catSubCatDate(
     BuildContext context,
     String? category,
@@ -1317,9 +1317,7 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: status == "in_progress"
-                        ? _workTime(context)
-                        : _startWork(context),
+                    child: _startWork(context),
                   ),
                 ),
 
@@ -1329,7 +1327,40 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 spacing: 16,
                 children: [
-                  SvgPicture.asset("assets/icons/moyo_call_action.svg"),
+                  InkWell(
+                    onTap: () async {
+                      if (providerPhone != null && providerPhone.isNotEmpty) {
+                        final Uri phoneUri = Uri(
+                          scheme: 'tel',
+                          path: providerPhone,
+                        );
+
+                        try {
+                          if (await canLaunchUrl(phoneUri)) {
+                            await launchUrl(phoneUri);
+                          } else {
+                            _showErrorSnackbar(
+                              context,
+                              'Could not launch dialer',
+                            );
+                          }
+                        } catch (e) {
+                          _showErrorSnackbar(
+                            context,
+                            'Error launching dialer: $e',
+                          );
+                        }
+                      } else {
+                        _showErrorSnackbar(
+                          context,
+                          'Phone number not available',
+                        );
+                      }
+                    },
+                    child: SvgPicture.asset(
+                      "assets/icons/moyo_call_action.svg",
+                    ),
+                  ),
                   InkWell(
                     onTap: () {
                       // Navigate to chat screen

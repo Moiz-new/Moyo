@@ -469,7 +469,7 @@ class _ConfirmProviderServiceDetailsScreenState
 
         // Fetch latest service details to get duration
         await _fetchServiceDetails();
-
+/*
         if (_serviceData != null) {
           // Extract duration information
           final durationValue = _serviceData!['duration_value'] ?? 1;
@@ -490,7 +490,7 @@ class _ConfirmProviderServiceDetailsScreenState
               ),
             );
           }
-        }
+        }*/
 
         // Reset provider state
         final startWorkProvider = Provider.of<StartWorkProvider>(
@@ -521,7 +521,7 @@ class _ConfirmProviderServiceDetailsScreenState
     final durationUnit = _serviceData!['duration_unit'] ?? 'hour';
 
     // Navigate to Timer Screen
-    Navigator.of(context).pushReplacement(
+    /*Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => ServiceTimerScreen(
           serviceId: widget.serviceId,
@@ -532,7 +532,7 @@ class _ConfirmProviderServiceDetailsScreenState
           authToken: providerToken!,
         ),
       ),
-    );
+    );*/
   }
 
   bool _isWorkInProgress() {
@@ -550,7 +550,7 @@ class _ConfirmProviderServiceDetailsScreenState
         final durationValue = _serviceData!['duration_value'] ?? 1;
         final durationUnit = _serviceData!['duration_unit'] ?? 'hour';
 
-        Navigator.of(context).pushReplacement(
+       /* Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => ServiceTimerScreen(
               serviceId: widget.serviceId,
@@ -561,7 +561,7 @@ class _ConfirmProviderServiceDetailsScreenState
               authToken: providerToken!,
             ),
           ),
-        );
+        );*/
       }
     });
   }

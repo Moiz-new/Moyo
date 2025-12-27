@@ -25,6 +25,7 @@ class UserInterestedProviderListCard extends StatelessWidget {
   final VoidCallback? onBook;
 
   final double? remainingTime;
+  final String? bidStatus;
 
   const UserInterestedProviderListCard({
     super.key,
@@ -42,7 +43,40 @@ class UserInterestedProviderListCard extends StatelessWidget {
     this.dp,
     this.remainingTime,
     this.onBook,
+    this.bidStatus, // Add bid status parameter
   });
+
+  // Helper method to get status color
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return Color(0xFF328303);
+      case 'rebid':
+        return ColorConstant.moyoOrange;
+      case 'pending':
+        return Colors.blue;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Helper method to get status background color
+  Color _getStatusBackgroundColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return Color(0xFFABF383);
+      case 'rebid':
+        return ColorConstant.moyoOrangeFade;
+      case 'pending':
+        return Colors.blue.withOpacity(0.15);
+      case 'rejected':
+        return Colors.red.withOpacity(0.15);
+      default:
+        return Colors.grey.withOpacity(0.15);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +98,7 @@ class UserInterestedProviderListCard extends StatelessWidget {
                 age: age,
                 distance: distance,
                 reachTime: reachTime,
+                bidStatus: bidStatus, // Pass bid status
               ),
               _categorySubCategory(
                 context,
@@ -98,6 +133,7 @@ class UserInterestedProviderListCard extends StatelessWidget {
     String? age,
     String? distance,
     String? reachTime,
+    String? bidStatus, // Add bid status parameter
   }) {
     return Container(
       height: 44.h,
@@ -110,19 +146,23 @@ class UserInterestedProviderListCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(
+          Expanded(
+            flex: 3,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  providerName ?? "no name",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16.sp,
-                    color: Color(0xFF1D1B20),
+                Flexible(
+                  child: Text(
+                    providerName ?? "no name",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16.sp,
+                      color: Color(0xFF1D1B20),
+                    ),
                   ),
                 ),
                 SizedBox(width: 4.w),
@@ -142,22 +182,46 @@ class UserInterestedProviderListCard extends StatelessWidget {
             ),
           ),
           SizedBox(width: 8.w),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.center,
+          // Status Badge
+          if (bidStatus != null && bidStatus!.isNotEmpty)
+            Container(
+              margin: EdgeInsets.only(right: 8.w),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+              decoration: BoxDecoration(
+                color: _getStatusBackgroundColor(bidStatus!),
+                borderRadius: BorderRadius.all(Radius.circular(50.r)),
+                border: Border.all(
+                  color: _getStatusColor(bidStatus!),
+                  width: 1.w,
+                ),
+              ),
+              child: Text(
+                bidStatus!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 10.sp,
+                  color: _getStatusColor(bidStatus!),
+                ),
+              ),
+            ),
+          // Distance and Reach Time
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 distance ?? "No distance",
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontSize: 13.sp,
+                  fontSize: 12.sp,
                   color: Colors.black.withAlpha(100),
                 ),
               ),
-              SizedBox(width: 2.w),
               Text(
                 "(${reachTime ?? "No reachTime"})",
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontSize: 13.sp,
+                  fontSize: 11.sp,
                   color: Colors.black.withAlpha(100),
                 ),
               ),
