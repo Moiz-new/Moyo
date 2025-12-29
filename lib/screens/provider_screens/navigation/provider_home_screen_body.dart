@@ -38,7 +38,7 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
       child: SingleChildScrollView(
         child: Column(
           children: [
@@ -60,12 +60,12 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                             style: GoogleFonts.roboto(
                               textStyle: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(
-                                    fontSize: 18,
-                                    color: isOnline
-                                        ? ColorConstant.moyoGreen
-                                        : Colors.grey.shade900,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                fontSize: 18.sp,
+                                color: isOnline
+                                    ? ColorConstant.moyoGreen
+                                    : Colors.grey.shade900,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                           Switch.adaptive(
@@ -81,36 +81,36 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                             onChanged: availabilityProvider.isLoading
                                 ? null
                                 : (value) async {
-                                    await availabilityProvider
-                                        .toggleAvailability();
+                              await availabilityProvider
+                                  .toggleAvailability();
 
-                                    if (availabilityProvider.errorMessage !=
-                                        null) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              availabilityProvider
-                                                      .errorMessage ??
-                                                  'An error occurred',
-                                            ),
-                                            backgroundColor: Colors.red,
-                                            duration: Duration(seconds: 3),
-                                          ),
-                                        );
-                                        availabilityProvider.clearError();
-                                      }
-                                    }
-                                  },
+                              if (availabilityProvider.errorMessage !=
+                                  null) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        availabilityProvider
+                                            .errorMessage ??
+                                            'An error occurred',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                      duration: Duration(seconds: 3),
+                                    ),
+                                  );
+                                  availabilityProvider.clearError();
+                                }
+                              }
+                            },
                           ),
                         ],
                       ),
                     ),
                     if (availabilityProvider.isLoading)
                       Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
+                        padding: EdgeInsets.only(top: 8.h),
                         child: LinearProgressIndicator(
                           backgroundColor: Colors.grey.shade200,
                           valueColor: AlwaysStoppedAnimation<Color>(
@@ -122,17 +122,17 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                 );
               },
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 10.h),
             Consumer<AvailabilityProvider>(
               builder: (context, availabilityProvider, child) {
                 final isOnline = availabilityProvider.isAvailable;
 
                 return Container(
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-                  height: 160,
+                  padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 10.w),
+                  height: 160.h,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
                   child: Column(
                     children: [
@@ -144,55 +144,56 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                           style: GoogleFonts.roboto(
                             textStyle: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
-                                  fontSize: 18,
-                                  color: ColorConstant.black,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              fontSize: 18.sp,
+                              color: ColorConstant.black,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),
-                      SizedBox(height: 10),
+                      SizedBox(height: 10.h),
                       Expanded(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // ✅ Card 1: Job Offering - SIRF YEH DISABLE HOGA
+                            // ✅ Card 1: Job Offering
                             Expanded(
                               child: Opacity(
                                 opacity: isOnline ? 1.0 : 0.5,
                                 child: GestureDetector(
                                   onTap: isOnline
                                       ? () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  ProviderMySkillScreen(),
-                                            ),
-                                          );
-                                        }
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            ProviderMySkillScreen(),
+                                      ),
+                                    );
+                                  }
                                       : null,
                                   child: Container(
-                                    padding: EdgeInsets.all(10),
+                                    padding: EdgeInsets.all(10.w),
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(16.r),
                                       color: ColorConstant.moyoOrangeFade,
                                     ),
                                     child: Column(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                                      MainAxisAlignment.spaceBetween,
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.center,
+                                      CrossAxisAlignment.center,
                                       children: [
                                         SizedBox(height: 7.h),
                                         Icon(
                                           Icons.business_center_outlined,
+                                          size: 24.sp,
                                           color: isOnline
                                               ? ColorConstant.moyoOrange
                                               : Colors.grey,
                                         ),
-                                        SizedBox(height: 6),
+                                        SizedBox(height: 6.h),
                                         Text(
                                           'Max 10 ',
                                           textAlign: TextAlign.center,
@@ -202,11 +203,12 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                                               .textTheme
                                               .labelMedium
                                               ?.copyWith(
-                                                color: isOnline
-                                                    ? ColorConstant.black
-                                                    : Colors.grey,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                            fontSize: 12.sp,
+                                            color: isOnline
+                                                ? ColorConstant.black
+                                                : Colors.grey,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                         Text(
                                           'Job Offering ',
@@ -217,11 +219,12 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                                               .textTheme
                                               .labelMedium
                                               ?.copyWith(
-                                                color: isOnline
-                                                    ? ColorConstant.black
-                                                    : Colors.grey,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                            fontSize: 12.sp,
+                                            color: isOnline
+                                                ? ColorConstant.black
+                                                : Colors.grey,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -229,8 +232,8 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                                 ),
                               ),
                             ),
-                            SizedBox(width: 10),
-                            // ✅ Card 2: Service Completed - HAMESHA ENABLE
+                            SizedBox(width: 10.w),
+                            // ✅ Card 2: Service Completed
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
@@ -243,23 +246,24 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                                   );
                                 },
                                 child: Container(
-                                  padding: EdgeInsets.all(10),
+                                  padding: EdgeInsets.all(10.w),
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(16.r),
                                     color: Color(0xFFDEF0FC),
                                   ),
                                   child: Column(
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.center,
+                                    CrossAxisAlignment.center,
                                     children: [
                                       SizedBox(height: 10.h),
                                       Icon(
                                         Icons.work_outline,
+                                        size: 24.sp,
                                         color: Color(0xFF2196F3),
                                       ),
-                                      SizedBox(height: 6),
+                                      SizedBox(height: 6.h),
                                       Text(
                                         'Service Completed',
                                         textAlign: TextAlign.center,
@@ -269,16 +273,18 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                                             .textTheme
                                             .labelMedium
                                             ?.copyWith(
-                                              color: ColorConstant.black,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                          fontSize: 12.sp,
+                                          color: ColorConstant.black,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
                             ),
-                            SizedBox(width: 10),
+                            SizedBox(width: 10.w),
+                            // ✅ Card 3: My Ratings
                             Expanded(
                               child: GestureDetector(
                                 onTap: () async {
@@ -291,22 +297,24 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                                   );
                                 },
                                 child: Container(
-                                  padding: EdgeInsets.all(10),
+                                  padding: EdgeInsets.all(10.w),
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(16.r),
                                     color: Color(0xFFFFF6D9),
                                   ),
                                   child: Column(
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.center,
+                                    CrossAxisAlignment.center,
                                     children: [
                                       SizedBox(height: 10.h),
                                       Icon(
                                         Icons.star,
+                                        size: 24.sp,
                                         color: Color(0xFFFEC00B),
                                       ),
+                                      SizedBox(height: 6.h),
                                       Text(
                                         'My Ratings',
                                         textAlign: TextAlign.center,
@@ -316,9 +324,10 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                                             .textTheme
                                             .labelMedium
                                             ?.copyWith(
-                                              color: ColorConstant.black,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                          fontSize: 12.sp,
+                                          color: ColorConstant.black,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -339,29 +348,29 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
               builder: (context, carouselProvider, child) {
                 if (carouselProvider.isLoading) {
                   return Container(
-                    height: 160,
-                    margin: EdgeInsets.symmetric(vertical: 10),
+                    height: 160.h,
+                    margin: EdgeInsets.symmetric(vertical: 10.h),
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
 
                 if (carouselProvider.errorMessage != null) {
                   return Container(
-                    height: 160,
-                    margin: EdgeInsets.symmetric(vertical: 10),
+                    height: 160.h,
+                    margin: EdgeInsets.symmetric(vertical: 10.h),
                     decoration: BoxDecoration(
                       color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.error_outline, color: Colors.red),
-                          SizedBox(height: 8),
+                          Icon(Icons.error_outline, size: 32.sp, color: Colors.red),
+                          SizedBox(height: 8.h),
                           Text(
                             'Failed to load carousel',
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(fontSize: 14.sp, color: Colors.red),
                           ),
                         ],
                       ),
@@ -371,16 +380,19 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
 
                 if (carouselProvider.carousels.isEmpty) {
                   return Container(
-                    height: 160,
-                    margin: EdgeInsets.symmetric(vertical: 10),
+                    height: 160.h,
+                    margin: EdgeInsets.symmetric(vertical: 10.h),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Center(
                       child: Text(
                         'No carousel items available',
-                        style: GoogleFonts.roboto(color: Colors.grey.shade600),
+                        style: GoogleFonts.roboto(
+                          fontSize: 14.sp,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ),
                   );
@@ -394,7 +406,7 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
               },
             ),
 
-            SizedBox(height: 10),
+            SizedBox(height: 10.h),
             SizedBox(
               width: double.infinity,
               child: Text(
@@ -402,20 +414,21 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                 textAlign: TextAlign.start,
                 style: GoogleFonts.roboto(
                   textStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontSize: 20.sp,
                     color: Color(0xFF000000),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 10.h),
 
             Consumer<ProviderCategoryProvider>(
               builder: (context, categoryProvider, child) {
                 if (categoryProvider.isLoading) {
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(32.0),
+                      padding: EdgeInsets.all(32.w),
                       child: CircularProgressIndicator(),
                     ),
                   );
@@ -424,29 +437,29 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                 if (categoryProvider.errorMessage != null) {
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(16.w),
                       child: Column(
                         children: [
                           Icon(
                             Icons.error_outline,
                             color: Colors.red,
-                            size: 48,
+                            size: 48.sp,
                           ),
-                          SizedBox(height: 16),
+                          SizedBox(height: 16.h),
                           Text(
                             categoryProvider.errorMessage ??
                                 'An error occurred',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(fontSize: 14.sp, color: Colors.red),
                           ),
-                          SizedBox(height: 16),
+                          SizedBox(height: 16.h),
                           ElevatedButton(
                             onPressed: () {
                               categoryProvider.fetchCategories(
                                 context: context,
                               );
                             },
-                            child: Text('Retry'),
+                            child: Text('Retry', style: TextStyle(fontSize: 14.sp)),
                           ),
                         ],
                       ),
@@ -457,11 +470,13 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                 if (categoryProvider.categories.isEmpty) {
                   return Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(32.0),
+                      padding: EdgeInsets.all(32.w),
                       child: Text(
                         'No categories available',
                         style: GoogleFonts.roboto(
-                          textStyle: Theme.of(context).textTheme.bodyLarge,
+                          textStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontSize: 16.sp,
+                          ),
                         ),
                       ),
                     ),
@@ -472,8 +487,8 @@ class _ProviderHomeScreenBodyState extends State<ProviderHomeScreenBody> {
                   width: double.infinity,
                   child: Wrap(
                     alignment: WrapAlignment.start,
-                    spacing: 16,
-                    runSpacing: 16,
+                    spacing: 16.w,
+                    runSpacing: 16.h,
                     children: categoryProvider.categories.map((category) {
                       return _ProviderCategoryCard(
                         category: category,
@@ -502,10 +517,8 @@ class _ProviderCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-
-    final cardWidth = (screenWidth - 20 - 48) / 4;
+    final screenWidth = 1.sw; // Use ScreenUtil for screen width
+    final cardWidth = (screenWidth - 20.w - 48.w) / 4;
 
     final imageUrl = category.icon != null && category.icon.isNotEmpty
         ? category.icon
@@ -525,12 +538,12 @@ class _ProviderCategoryCard extends StatelessWidget {
         );
       },
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 4.w),
         width: cardWidth,
-        height: 100,
+        height: 100.h,
         decoration: BoxDecoration(
           color: Color(0xFFF7E5D1),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -539,26 +552,26 @@ class _ProviderCategoryCard extends StatelessWidget {
             Container(
               clipBehavior: Clip.hardEdge,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(100),
+                borderRadius: BorderRadius.circular(100.r),
               ),
-              height: 48,
-              width: 48,
+              height: 48.w, // Use .w for square dimensions
+              width: 48.w,
               child: imageUrl != null && imageUrl.isNotEmpty
                   ? CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Image.asset(
-                        'assets/images/moyo_service_placeholder.png',
-                      ),
-                      errorWidget: (context, url, error) => Image.asset(
-                        'assets/images/moyo_service_placeholder.png',
-                      ),
-                    )
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Image.asset(
+                  'assets/images/moyo_service_placeholder.png',
+                ),
+                errorWidget: (context, url, error) => Image.asset(
+                  'assets/images/moyo_service_placeholder.png',
+                ),
+              )
                   : Image.asset('assets/images/moyo_service_placeholder.png'),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: 8.h),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: EdgeInsets.symmetric(horizontal: 4.w),
               child: Text(
                 category.name ?? "Category",
                 textAlign: TextAlign.center,
@@ -567,7 +580,7 @@ class _ProviderCategoryCard extends StatelessWidget {
                 style: GoogleFonts.roboto(
                   textStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Color(0xFF000000),
-                    fontSize: 10,
+                    fontSize: 10.sp,
                     height: 1.2,
                   ),
                 ),

@@ -25,7 +25,7 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
   final List<TextEditingController> _controllers = List.generate(
     6,
-        (_) => TextEditingController(),
+    (_) => TextEditingController(),
   );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
@@ -227,7 +227,7 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
       print('=== Setting up notifications ===');
 
       final permissionGranted =
-      await NotificationService.requestNotificationPermission(context);
+          await NotificationService.requestNotificationPermission(context);
 
       if (permissionGranted) {
         print('✓ Notification permission granted');
@@ -261,7 +261,7 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
       Navigator.pushNamedAndRemoveUntil(
         context,
         "/UserCustomBottomNav",
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -270,209 +270,213 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+      backgroundColor: Colors.white,
+      body: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: Column(
+          children: [
+            // Top Image Section
+            Expanded(
+              flex: 3,
+              child: Container(
+                width: double.infinity,
+                child: Image.asset(ImageConstant.loginBgImg, fit: BoxFit.cover),
+              ),
+            ),
 
-      ),
-      extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(ImageConstant.otpBgImg, fit: BoxFit.cover),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height -
-                      MediaQuery.of(context).padding.top -
-                      MediaQuery.of(context).padding.bottom,
+            // Bottom Content Section
+            Expanded(
+              flex: 6,
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
                 ),
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Spacer(),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 30.h),
 
-                        SizedBox(height: 135.h),
-                        Text(
-                          "Enter OTP",
-                          style: AppTextStyle.robotoBold.copyWith(
-                            fontSize: 28.sp,
-                            color: Colors.black,
+                      // Title
+                      Text(
+                        "Enter OTP",
+                        style: AppTextStyle.robotoBold.copyWith(
+                          fontSize: 28.sp,
+                          color: Colors.black,
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      Text(
+                        "A 6 digit code has been sent to",
+                        style: AppTextStyle.robotoRegular.copyWith(
+                          fontSize: 15.sp,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        widget.phoneNumber ?? '',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 40.h),
+
+                      // OTP fields with auto-fill support
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          6,
+                          (index) => Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 2.w),
+                            child: _buildOtpField(context, index),
                           ),
                         ),
-                        SizedBox(height: 12.h),
-                        Text(
-                          "A 6 digit code has been sent to",
-                          style: AppTextStyle.robotoRegular.copyWith(
-                            fontSize: 15.sp,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        SizedBox(height: 6.h),
-                        Text(
-                          widget.phoneNumber ?? '',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 40.h),
+                      ),
 
-                        // OTP fields with auto-fill support
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            6,
-                                (index) => Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 2.w),
-                              child: _buildOtpField(context, index),
-                            ),
-                          ),
-                        ),
+                      SizedBox(height: 20.h),
 
-                        SizedBox(height: 20.h),
-
-                        Consumer<OtpScreenProvider>(
-                          builder: (context, provider, _) {
-                            if (provider.errorMessage != null) {
-                              return Padding(
-                                padding: EdgeInsets.only(bottom: 16.h),
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 16.w,
-                                    vertical: 12.h,
+                      Consumer<OtpScreenProvider>(
+                        builder: (context, provider, _) {
+                          if (provider.errorMessage != null) {
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: 16.h),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16.w,
+                                  vertical: 12.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  border: Border.all(
+                                    color: Colors.red,
+                                    width: 1.5,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    border: Border.all(color: Colors.red, width: 1.5),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.error_outline,
-                                        color: Colors.red,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      Expanded(
-                                        child: Text(
-                                          provider.errorMessage!,
-                                          style: TextStyle(
-                                            color: Colors.red.shade700,
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: Text(
+                                        provider.errorMessage!,
+                                        style: TextStyle(
+                                          color: Colors.red.shade700,
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-
-                        SizedBox(height: 24.h),
-
-                        Consumer<OtpScreenProvider>(
-                          builder: (context, provider, _) => SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: (provider.isLoading ||
-                                  provider.isUpdatingDeviceToken)
-                                  ? null
-                                  : _verifyOtp,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: ColorConstant.appColor,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: 16.h),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                ),
-                                elevation: 5,
-                              ),
-                              child: (provider.isLoading ||
-                                  provider.isUpdatingDeviceToken)
-                                  ? SizedBox(
-                                height: 24.h,
-                                width: 24.w,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                                  : Text(
-                                "Verify OTP",
-                                style:
-                                AppTextStyle.robotoMedium.copyWith(
-                                  fontSize: 16.sp,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                                    ),
+                                  ],
                                 ),
                               ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+
+                      SizedBox(height: 24.h),
+
+                      Consumer<OtpScreenProvider>(
+                        builder: (context, provider, _) => SizedBox(
+                          width: double.infinity,
+                          height: 56.h,
+                          child: ElevatedButton(
+                            onPressed:
+                                (provider.isLoading ||
+                                    provider.isUpdatingDeviceToken)
+                                ? null
+                                : _verifyOtp,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: ColorConstant.appColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              elevation: 0,
                             ),
+                            child:
+                                (provider.isLoading ||
+                                    provider.isUpdatingDeviceToken)
+                                ? SizedBox(
+                                    height: 24.h,
+                                    width: 24.w,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : Text(
+                                    "Verify OTP",
+                                    style: TextStyle(
+                                      fontSize: 18.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
+                      ),
 
-                        SizedBox(height: 20.h),
+                      SizedBox(height: 20.h),
 
-                        Consumer<OtpScreenProvider>(
-                          builder: (context, provider, _) => TextButton(
-                            onPressed: provider.canResend
-                                ? () => provider.resendOtp(
-                              mobile: widget.phoneNumber,
-                            )
-                                : null,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  provider.canResend
-                                      ? "Didn't receive code? "
-                                      : "Resend in ",
-                                  style: AppTextStyle.robotoRegular.copyWith(
-                                    fontSize: 14.sp,
-                                    color: Colors.grey.shade600,
-                                  ),
+                      Consumer<OtpScreenProvider>(
+                        builder: (context, provider, _) => TextButton(
+                          onPressed: provider.canResend
+                              ? () => provider.resendOtp(
+                                  mobile: widget.phoneNumber,
+                                )
+                              : null,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                provider.canResend
+                                    ? "Didn't receive code? "
+                                    : "Resend in ",
+                                style: AppTextStyle.robotoRegular.copyWith(
+                                  fontSize: 14.sp,
+                                  color: Colors.grey.shade600,
                                 ),
-                                Text(
-                                  provider.canResend
-                                      ? "Resend"
-                                      : "${provider.secondsRemaining}s",
-                                  style: AppTextStyle.robotoBold.copyWith(
-                                    fontSize: 14.sp,
-                                    color: provider.canResend
-                                        ? Colors.black
-                                        : Colors.grey.shade700,
-                                    decoration: provider.canResend
-                                        ? TextDecoration.underline
-                                        : null,
-                                  ),
+                              ),
+                              Text(
+                                provider.canResend
+                                    ? "Resend"
+                                    : "${provider.secondsRemaining}s",
+                                style: AppTextStyle.robotoBold.copyWith(
+                                  fontSize: 14.sp,
+                                  color: provider.canResend
+                                      ? Colors.black
+                                      : Colors.grey.shade700,
+                                  decoration: provider.canResend
+                                      ? TextDecoration.underline
+                                      : null,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                        SizedBox(height: 50.h),
-                        SizedBox(
-                          height: MediaQuery.of(context).viewInsets.bottom,
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

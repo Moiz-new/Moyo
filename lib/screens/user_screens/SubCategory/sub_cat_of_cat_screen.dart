@@ -20,6 +20,8 @@ class SubCatOfCatScreen extends StatefulWidget {
 }
 
 class _SubCatOfCatScreenState extends State<SubCatOfCatScreen> {
+  String? _categoryName;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -27,10 +29,16 @@ class _SubCatOfCatScreenState extends State<SubCatOfCatScreen> {
     final arguments = ModalRoute.of(context)?.settings.arguments;
 
     if (arguments is Category) {
+      // ✅ Save category name
+      _categoryName = arguments.name;
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<SubCategoryProvider>().fetchSubcategories(arguments.id);
       });
     } else if (arguments is Map<String, dynamic>) {
+      // ✅ Save category name from map
+      _categoryName = arguments['name'] ?? arguments['categoryName'];
+
       final categoryId = arguments['id'] ?? arguments['categoryId'];
       if (categoryId != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -136,7 +144,10 @@ class _SubCatOfCatScreenState extends State<SubCatOfCatScreen> {
             final subcategory = provider.subcategories[index];
             return Padding(
               padding: EdgeInsets.symmetric(horizontal: 0, vertical: 6.h),
-              child: UserExpansionTileListCard(subcategory: subcategory),
+              child: UserExpansionTileListCard(
+                subcategory: subcategory,
+                categoryName: _categoryName,
+              ),
             );
           },
         );
@@ -147,8 +158,13 @@ class _SubCatOfCatScreenState extends State<SubCatOfCatScreen> {
 
 class UserExpansionTileListCard extends StatelessWidget {
   final SubCategory subcategory;
+  final String? categoryName; // ✅ Add this
 
-  const UserExpansionTileListCard({super.key, required this.subcategory});
+  const UserExpansionTileListCard({
+    super.key,
+    required this.subcategory,
+    this.categoryName, // ✅ Add this
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -356,34 +372,36 @@ class UserExpansionTileListCard extends StatelessWidget {
 
     // ADD THIS CHECK:
     if (!isEmailVerified || userMobile.isEmpty) {
-      // Email not verified OR mobile not provided, show dialog first
       print(
         'Email not verified or mobile missing, showing update profile dialog',
       );
 
+      print(isEmailVerified);
+      print(userMobile);
       await UpdateProfileDialog.show(context);
 
-      // After dialog closes, check again if both are now verified
       final updatedPrefs = await SharedPreferences.getInstance();
       final updatedEmailVerified =
           updatedPrefs.getBool('is_email_verified') ?? false;
       final updatedMobile = updatedPrefs.getString('user_mobile') ?? '';
 
       if (!updatedEmailVerified || updatedMobile.isEmpty) {
-        // Still not complete, don't proceed
         print('Profile still incomplete after dialog');
         return;
       }
-      // Both verified, continue to service screen below
     }
 
     print(subcategory.id);
+    print(subcategory.name);
+
+    // ✅ UPDATED Navigation - Pass categoryName
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => UserInstantServiceScreen(
           categoryId: subcategory.id,
-          categoryName: subcategory.name,
+          categoryName: categoryName,
+          subcategoryName: subcategory.name,
           serviceType: serviceType,
         ),
       ),

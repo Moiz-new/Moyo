@@ -27,7 +27,7 @@ class _ProviderServiceDetailsScreenState
   bool _isLoading = true;
   String? _errorMessage;
   Timer? _pollingTimer;
-  bool _isFetching = false; // Prevents concurrent API calls
+  bool _isFetching = false;
 
   @override
   void initState() {

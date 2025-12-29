@@ -43,7 +43,7 @@ class UserInterestedProviderListCard extends StatelessWidget {
     this.dp,
     this.remainingTime,
     this.onBook,
-    this.bidStatus, // Add bid status parameter
+    this.bidStatus,
   });
 
   // Helper method to get status color

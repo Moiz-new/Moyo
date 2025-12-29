@@ -239,190 +239,245 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
               });
             }
 
-            return AlertDialog(
+            return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.r),
               ),
-              title: Text(
-                'Re-Bid Service',
-                style: GoogleFonts.roboto(
-                  fontSize: 20.sp,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1D1B20),
-                ),
+              insetPadding: EdgeInsets.symmetric(
+                horizontal: 16.w,
+                vertical: 24.h,
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Enter your new bid amount and note',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
-                      color: Color(0xFF7A7A7A),
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'Amount *',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1D1B20),
-                    ),
-                  ),
-                  SizedBox(height: 8.h),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => validateAmount(),
-                    decoration: InputDecoration(
-                      hintText: 'Enter amount',
-                      prefixText: '₹ ',
-                      errorText: amountError,
-                      hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(
-                          color: ColorConstant.moyoOrange,
-                          width: 2.w,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Title
+                    Padding(
+                      padding: EdgeInsets.all(20.w),
+                      child: Text(
+                        'Re-Bid Service',
+                        style: GoogleFonts.roboto(
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1D1B20),
                         ),
                       ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: EdgeInsets.all(12.w),
                     ),
-                    style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
-                      color: Color(0xFF1D1B20),
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'Note',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1D1B20),
-                    ),
-                  ),
-                  SizedBox(height: 8.h),
-                  TextField(
-                    controller: noteController,
-                    maxLines: 3,
-                    maxLength: 200,
-                    decoration: InputDecoration(
-                      hintText: 'Enter note...',
-                      hintStyle: GoogleFonts.roboto(color: Color(0xFFBDBDBD)),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(color: Color(0xFFE6E6E6)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: BorderSide(
-                          color: ColorConstant.moyoOrange,
-                          width: 2.w,
+
+                    // Scrollable Content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Enter your new bid amount and note',
+                              style: GoogleFonts.roboto(
+                                fontSize: 14.sp,
+                                color: Color(0xFF7A7A7A),
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Text(
+                              'Amount *',
+                              style: GoogleFonts.roboto(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1D1B20),
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            TextField(
+                              controller: amountController,
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => validateAmount(),
+                              decoration: InputDecoration(
+                                hintText: 'Enter amount',
+                                prefixText: '₹ ',
+                                errorText: amountError,
+                                hintStyle: GoogleFonts.roboto(
+                                  color: Color(0xFFBDBDBD),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFE6E6E6),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFE6E6E6),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  borderSide: BorderSide(
+                                    color: ColorConstant.moyoOrange,
+                                    width: 2.w,
+                                  ),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: EdgeInsets.all(12.w),
+                              ),
+                              style: GoogleFonts.roboto(
+                                fontSize: 14.sp,
+                                color: Color(0xFF1D1B20),
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                            Text(
+                              'Note',
+                              style: GoogleFonts.roboto(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1D1B20),
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            TextField(
+                              controller: noteController,
+                              maxLines: 3,
+                              maxLength: 200,
+                              decoration: InputDecoration(
+                                hintText: 'Enter note...',
+                                hintStyle: GoogleFonts.roboto(
+                                  color: Color(0xFFBDBDBD),
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFE6E6E6),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFE6E6E6),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  borderSide: BorderSide(
+                                    color: ColorConstant.moyoOrange,
+                                    width: 2.w,
+                                  ),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: EdgeInsets.all(12.w),
+                              ),
+                              style: GoogleFonts.roboto(
+                                fontSize: 14.sp,
+                                color: Color(0xFF1D1B20),
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                          ],
                         ),
                       ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: EdgeInsets.all(12.w),
                     ),
-                    style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
-                      color: Color(0xFF1D1B20),
+
+                    // Action Buttons
+                    Padding(
+                      padding: EdgeInsets.all(20.w),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop(null);
+                            },
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20.w,
+                                vertical: 12.h,
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF7A7A7A),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          ElevatedButton(
+                            onPressed: () {
+                              final amount = amountController.text.trim();
+                              final note = noteController.text.trim();
+
+                              if (amount.isEmpty) {
+                                _showErrorSnackbar(
+                                  context,
+                                  'Please enter amount',
+                                );
+                                return;
+                              }
+
+                              double entered = double.tryParse(amount) ?? 0;
+                              double minAllowed = baseAmount * 0.70;
+                              double maxAllowed = baseAmount * 2.00;
+
+                              if (entered < minAllowed) {
+                                _showErrorSnackbar(
+                                  context,
+                                  "Amount must be at least ₹${minAllowed.toStringAsFixed(2)}",
+                                );
+                                return;
+                              } else if (entered > maxAllowed) {
+                                _showErrorSnackbar(
+                                  context,
+                                  "Amount must not exceed ₹${maxAllowed.toStringAsFixed(2)}",
+                                );
+                                return;
+                              }
+
+                              if (note.isEmpty) {
+                                _showErrorSnackbar(
+                                  context,
+                                  'Please enter a note',
+                                );
+                                return;
+                              }
+
+                              Navigator.of(
+                                context,
+                              ).pop({'amount': amount, 'note': note});
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFFCD3232),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 24.w,
+                                vertical: 12.h,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            ),
+                            child: Text(
+                              'Submit Re-Bid',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(null);
-                  },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20.w,
-                      vertical: 12.h,
-                    ),
-                  ),
-                  child: Text(
-                    'Cancel',
-                    style: GoogleFonts.roboto(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF7A7A7A),
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final amount = amountController.text.trim();
-                    final note = noteController.text.trim();
-
-                    if (amount.isEmpty) {
-                      _showErrorSnackbar(context, 'Please enter amount');
-                      return;
-                    }
-
-                    double entered = double.tryParse(amount) ?? 0;
-                    double minAllowed = baseAmount * 0.70;
-                    double maxAllowed = baseAmount * 2.00;
-
-                    if (entered < minAllowed) {
-                      _showErrorSnackbar(
-                        context,
-                        "Amount must be at least ₹${minAllowed.toStringAsFixed(2)}",
-                      );
-                      return;
-                    } else if (entered > maxAllowed) {
-                      _showErrorSnackbar(
-                        context,
-                        "Amount must not exceed ₹${maxAllowed.toStringAsFixed(2)}",
-                      );
-                      return;
-                    }
-
-                    if (note.isEmpty) {
-                      _showErrorSnackbar(context, 'Please enter a note');
-                      return;
-                    }
-
-                    Navigator.of(context).pop({'amount': amount, 'note': note});
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFCD3232),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 24.w,
-                      vertical: 12.h,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                  ),
-                  child: Text(
-                    'Submit Re-Bid',
-                    style: GoogleFonts.roboto(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
             );
           },
         );

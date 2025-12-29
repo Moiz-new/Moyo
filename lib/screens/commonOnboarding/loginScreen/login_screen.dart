@@ -25,11 +25,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneNumberController = TextEditingController();
+  final FocusNode _phoneFocusNode = FocusNode();
   bool _isTermsAccepted = false;
 
   @override
   void dispose() {
     _phoneNumberController.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
   }
 
@@ -75,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
       print('=== Setting up notifications ===');
 
       final permissionGranted =
-          await NotificationService.requestNotificationPermission(context);
+      await NotificationService.requestNotificationPermission(context);
 
       if (permissionGranted) {
         print('✓ Notification permission granted');
@@ -109,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushNamedAndRemoveUntil(
         context,
         "/UserCustomBottomNav",
-        (route) => false,
+            (route) => false,
       );
     }
   }
@@ -153,313 +155,375 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: true,
-      body: SingleChildScrollView(
-        child: IntrinsicHeight(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Spacer(),
-              Image.asset(ImageConstant.loginBgImg, fit: BoxFit.cover,height: 250.h,),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 20,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: Column(
+          children: [
+            // Top Image Section
+            Expanded(
+              flex: 3,
+              child: Container(
+                width: double.infinity,
+                child: Image.asset(ImageConstant.loginBgImg, fit: BoxFit.cover),
+              ),
+            ),
 
-                  children: [
-                    Align(
-                      alignment: Alignment.center,
-                      child: Text(
-                        "MOYO INTERNATIONAL",
+            // Bottom Content Section
+            Expanded(
+              flex: 6,
+              child: SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(horizontal: 24.w),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 30.h),
+
+                      // Title
+                      Text(
+                        "Find Verified and Professional Services",
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: 18.sp,
+                          fontSize: 24.sp,
                           fontWeight: FontWeight.bold,
+                          height: 1.3,
                         ),
                       ),
-                    ),
-                    SizedBox(height: 10.h,),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: Colors.grey.shade300,
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w),
-                          child: Text(
-                            "Log in or sign up",
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: Colors.grey.shade300,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10.h),
-                    Container(
-                      padding: EdgeInsets.all(8.w),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(
-                          color: Colors.grey.shade400,
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
+
+                      SizedBox(height: 28.h),
+
+                      // Log in or sign up text
+                      Row(
                         children: [
-                          SizedBox(
-                            child: Image.asset(
-                              ImageConstant.phoneLogo,
-                              height: 24.h,
-                              width: 24.w,
-                              color: Colors.grey.shade700,
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey.shade400,
+                              thickness: 1,
                             ),
                           ),
-                          Container(
-                            padding: EdgeInsets.only(top: 15.h),
-                            width: 200.w,
-                            height: 36.h,
-                            child: TextField(
-                              cursorColor: Colors.black,
-                              style: AppTextStyle.robotoMedium.copyWith(
-                                color: Colors.black,
-                                fontSize: 15.sp,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              "Log in or sign up",
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w500,
                               ),
-                              controller: _phoneNumberController,
-                              keyboardType: TextInputType.number,
-                              maxLength: 10,
-                              decoration: InputDecoration(
-                                hintText: "Phone Number",
-                                counterText: "",
-                                hintStyle: AppTextStyle.robotoMedium.copyWith(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 15.sp,
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey.shade400,
+                              thickness: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 22.h),
+
+                      // Phone Number Input
+                      Container(
+                        height: 50.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Row(
+                          children: [
+                            // Country Code
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 16.w),
+                              child: Row(
+                                children: [
+                                  Text("🇮🇳", style: TextStyle(fontSize: 20.sp)),
+                                  SizedBox(width: 4.w),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    color: Colors.grey.shade600,
+                                    size: 24.sp,
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Divider
+                            Container(
+                              width: 1,
+                              height: 32.h,
+                              color: Colors.grey.shade300,
+                            ),
+
+                            SizedBox(width: 12.w),
+
+                            // Country Code Text
+                            Text(
+                              "+91",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+
+                            SizedBox(width: 12.w),
+
+                            // Phone Number TextField
+                            Expanded(
+                              child: TextField(
+                                controller: _phoneNumberController,
+                                focusNode: _phoneFocusNode,
+                                keyboardType: TextInputType.number,
+                                maxLength: 10,
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(
-                                  borderSide: BorderSide(
+                                decoration: InputDecoration(
+                                  hintText: "Enter Phone Number",
+                                  hintStyle: TextStyle(
                                     color: Colors.grey.shade400,
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w400,
                                   ),
+                                  border: InputBorder.none,
+                                  counterText: "",
+                                  contentPadding: EdgeInsets.zero,
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.transparent,
-                                  ),
+                              ),
+                            ),
+                            SizedBox(width: 16.w),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 18.h),
+
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 24.h),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              height: 20.h,
+                              width: 20.w,
+                              child: Checkbox(
+                                value: _isTermsAccepted,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isTermsAccepted = value ?? false;
+                                  });
+                                },
+                                activeColor: ColorConstant.appColor,
+                                checkColor: Colors.white,
+                                side: BorderSide(
+                                  color: Colors.grey.shade400,
+                                  width: 1.5,
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w400,
                                   ),
+                                  children: [
+                                    TextSpan(
+                                      text: "By continuing, you agree to our ",
+                                    ),
+                                    TextSpan(
+                                      text: "Terms of Service",
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  TermsandConditions(
+                                                    type: "terms",
+                                                    roles: [""],
+                                                  ),
+                                            ),
+                                          );
+                                        },
+                                    ),
+                                    TextSpan(text: "  "),
+                                    TextSpan(
+                                      text: "Privacy Policy",
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          // Navigate to Privacy Policy
+                                        },
+                                    ),
+                                    TextSpan(text: "  "),
+                                    TextSpan(
+                                      text: "Content Policy",
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          // Navigate to Content Policy
+                                        },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Continue Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56.h,
+                        child: ElevatedButton(
+                          onPressed: (provider.isLoading || !_isTermsAccepted)
+                              ? null
+                              : () => _handleContinue(context, provider),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isTermsAccepted
+                                ? ColorConstant.appColor
+                                : Colors.grey.shade300,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: provider.isLoading
+                              ? SizedBox(
+                            height: 24.h,
+                            width: 24.w,
+                            child: const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                              : Text(
+                            "Continue",
+                            style: TextStyle(
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.w600,
+                              color: _isTermsAccepted
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(height: 24.h),
+
+                      // OR Divider
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey.shade400,
+                              thickness: 1,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              "or",
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey.shade400,
+                              thickness: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 24.h),
+
+                      // Social Login Buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Google Button
+                          GestureDetector(
+                            onTap: (provider.isLoading || !_isTermsAccepted)
+                                ? null
+                                : () => _handleGoogleSignIn(context, provider),
+                            child: Container(
+                              width: 64.w,
+                              height: 64.h,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                border: Border.all(
+                                  color: Colors.grey.shade300,
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Image.asset(
+                                  ImageConstant.googleLogo,
+                                  width: 28.w,
+                                  height: 28.h,
+                                  fit: BoxFit.contain,
+                                  color: _isTermsAccepted ? null : Colors.grey,
                                 ),
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    SizedBox(height: 16.h),
-                    // Terms and Conditions Checkbox
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.only(top: 2.h),
-                          child: SizedBox(
-                            height: 18.h,
-                            width: 18.w,
-                            child: Checkbox(
-                              value: _isTermsAccepted,
-                              onChanged: (value) {
-                                setState(() {
-                                  _isTermsAccepted = value ?? false;
-                                });
-                              },
-                              activeColor: ColorConstant.appColor,
-                              checkColor: Colors.white,
-                              side: BorderSide(
-                                color: Colors.grey.shade600,
-                                width: 2,
-                              ),
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 8.w),
-                        Expanded(
-                          child: RichText(
-                            text: TextSpan(
-                              style: AppTextStyle.robotoRegular.copyWith(
-                                color: Colors.grey.shade700,
-                                fontSize: 12.sp,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: "By continuing, you agree to our ",
-                                ),
-                                TextSpan(
-                                  text: "Terms and Conditions.",
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: Colors.black,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              TermsandConditions(
-                                                type: "terms",
-                                                roles: [""],
-                                              ),
-                                        ),
-                                      );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            "Terms and Conditions coming soon",
-                                          ),
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                    },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 24.h),
-                    // Primary Continue button
-                    ElevatedButton(
-                      onPressed: (provider.isLoading || !_isTermsAccepted)
-                          ? null
-                          : () => _handleContinue(context, provider),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isTermsAccepted
-                            ? ColorConstant.appColor
-                            : Colors.grey.shade300,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                      ),
-                      child: provider.isLoading
-                          ? SizedBox(
-                              height: 20.h,
-                              width: 20.w,
-                              child: const CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              "Continue",
-                              style: AppTextStyle.robotoMedium.copyWith(
-                                fontSize: 16.sp,
-                                color: _isTermsAccepted
-                                    ? Colors.white
-                                    : Colors.grey.shade600,
-                              ),
-                            ),
-                    ),
-                    SizedBox(height: 30.h),
-                    // OR text
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: Colors.grey.shade300,
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w),
-                          child: Text(
-                            "or",
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: Colors.grey.shade300,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16.h),
-                    // Continue with Google button
-                    GestureDetector(
-                      onTap: (provider.isLoading || !_isTermsAccepted)
-                          ? null
-                          : () => _handleGoogleSignIn(context, provider),
-                      child: Container(
-                        width: 48.w,
-                        height: 48.h,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          border: Border.all(
-                            color: _isTermsAccepted
-                                ? Colors.grey.shade400
-                                : Colors.grey.shade300,
-                            width: 2.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Image.asset(
-                            ImageConstant.googleLogo,
-                            width: 24.w,
-                            height: 24.h,
-                            fit: BoxFit.cover,
-                            color: _isTermsAccepted ? null : Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16.h),
-                    SizedBox(height: 25.h),
-                  ],
+                      SizedBox(height: 24.h),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

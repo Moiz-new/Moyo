@@ -75,7 +75,7 @@ class _UserCustomBottomNavState extends State<UserCustomBottomNav> {
           _buildNavItem(context, Icons.home, "Home", 0),
           _buildNavItem(context, Icons.search, "Search", 1),
           _buildNavItem(context, Icons.calendar_today_outlined, "Services", 2),
-          _buildNavItem(context, Icons.person_outline, "Go to Provider", 3),
+          _buildNavItem(context, Icons.person_outline, "To Provider", 3),
         ],
       ),
     );

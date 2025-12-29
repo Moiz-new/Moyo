@@ -1352,18 +1352,15 @@ class UserServiceDetails extends StatelessWidget {
 
     try {
       // Show cancellation bottom sheet
-      final result = await showModalBottomSheet<bool>(
+      final result = await showDialog<bool>(
         context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        isDismissible: false,
-        enableDrag: false,
+        barrierDismissible: false,
         builder: (BuildContext context) {
-          return CancelServiceBottomSheet(serviceId: serviceId!);
+          return CancelServiceDialog(serviceId: serviceId!);
         },
       );
 
-      // If cancellation was successful
+// If cancellation was successful
       if (result == true && context.mounted) {
         _showSuccessSnackbar(context, 'Service cancelled successfully');
 

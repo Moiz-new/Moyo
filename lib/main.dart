@@ -253,7 +253,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      designSize: const Size(360, 800),
+      designSize: const Size(375, 820),
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {

@@ -591,6 +591,7 @@ class EditProfileProvider with ChangeNotifier {
   }
 
   // Verify mobile OTP
+// Verify mobile OTP
   Future<bool> verifyMobileOtp({required String otp}) async {
     final mobile = mobileController.text.trim();
 
@@ -610,7 +611,7 @@ class EditProfileProvider with ChangeNotifier {
 
       if (token == null || token.isEmpty) {
         _mobileErrorMessage =
-            "Authentication token not found. Please login again.";
+        "Authentication token not found. Please login again.";
         _isMobileOtpVerifying = false;
         notifyListeners();
         return false;
@@ -633,12 +634,24 @@ class EditProfileProvider with ChangeNotifier {
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
 
-        // Check for success message or status
         if (responseData['message'] != null ||
             responseData['success'] == true) {
           _isMobileVerified = true;
           _originalMobile = mobile;
           _isMobileSet = true;
+
+          // ✅ ADD THESE LINES - Save mobile to SharedPreferences
+          await prefs.setString('user_mobile', mobile);
+          await prefs.setBool('is_mobile_verified', true);
+
+          // Update user_data if it exists
+          final userDataString = prefs.getString('user_data');
+          if (userDataString != null) {
+            final userData = jsonDecode(userDataString);
+            userData['mobile'] = mobile;
+            userData['mobile_verified'] = true;
+            await prefs.setString('user_data', jsonEncode(userData));
+          }
 
           _isMobileOtpVerifying = false;
           _mobileOtpSent = false;
@@ -668,7 +681,6 @@ class EditProfileProvider with ChangeNotifier {
       return false;
     }
   }
-
   // Resend Email OTP
   Future<void> resendEmailOtp() async {
     await sendEmailOtp();
@@ -782,6 +794,9 @@ class EditProfileProvider with ChangeNotifier {
           }
           if (!_isMobileSet && mobileController.text.trim().isNotEmpty) {
             _isMobileSet = true;
+          }
+          if (_isMobileVerified) {
+            await prefs.setString('user_mobile', mobileController.text.trim());
           }
 
           _isLoading = false;
