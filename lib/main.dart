@@ -5,6 +5,7 @@ import 'package:first_flutter/providers/user_navigation_provider.dart';
 import 'package:first_flutter/screens/Skills/MySkillProvider.dart';
 import 'package:first_flutter/screens/SubCategory/SkillProvider.dart';
 import 'package:first_flutter/screens/SubCategory/SubcategoryProvider.dart';
+import 'package:first_flutter/screens/commonOnboarding/Refferal/ReferralCodeScreen.dart';
 import 'package:first_flutter/screens/commonOnboarding/otpScreen/otp_screen_provider.dart';
 import 'package:first_flutter/screens/provider_screens/LegalDocumentScreen.dart';
 import 'package:first_flutter/screens/provider_screens/ProviderProfile/EditProviderProfileProvider.dart';
@@ -36,6 +37,7 @@ import 'package:first_flutter/screens/user_screens/Profile/UserProfileProvider.d
 import 'package:first_flutter/screens/user_screens/SubCategory/SubCategoryProvider.dart';
 import 'package:first_flutter/screens/user_screens/SubCategory/SubCategoryStateProvider.dart';
 import 'package:first_flutter/screens/user_screens/SubCategory/sub_cat_of_cat_screen.dart';
+import 'package:first_flutter/screens/user_screens/User%20Instant%20Service/PaymentBudgetProvider.dart';
 import 'package:first_flutter/screens/user_screens/User%20Instant%20Service/UserInstantServiceProvider.dart';
 import 'package:first_flutter/screens/user_screens/navigation/BookingProvider.dart';
 import 'package:first_flutter/screens/user_screens/navigation/EmergencyContactProvider.dart';
@@ -165,6 +167,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => RazorpayProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
         ChangeNotifierProvider(create: (_) => ProviderCategoryProvider()),
+        ChangeNotifierProvider(create: (_) => PaymentBudgetProvider()),
       ],
       child: const MyApp(),
     ),
@@ -274,6 +277,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             initialRoute: '/splash',
             routes: {
               '/splash': (_) => const SplashScreen(),
+              '/ReferralCodeScreen': (_) => const ReferralCodeScreen(),
               '/login': (_) => const LoginScreen(),
               '/UserCustomBottomNav': (_) => const UserCustomBottomNav(),
               '/UserServiceDetailsScreen': (_) =>

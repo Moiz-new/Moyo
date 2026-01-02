@@ -298,9 +298,14 @@ class _UserInstantServiceScreenState extends State<UserInstantServiceScreen> {
                                     latitude: latitude,
                                     longitude: longitude,
                                     // ✅ Add these new parameters
-                                    categoryName: widget.categoryName ?? 'General',
+                                    categoryName:
+                                        widget.categoryName ?? 'General',
                                     subcategoryName: selectedSubcategory.name,
-                                    amount: provider.getFormValue('budget')?.toString() ?? '0',
+                                    amount:
+                                        provider
+                                            .getFormValue('budget')
+                                            ?.toString() ??
+                                        '0',
                                   ),
                                 ),
                               );

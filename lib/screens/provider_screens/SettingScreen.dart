@@ -7,7 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:app_settings/app_settings.dart';
-import 'dart:io'; // Added for XFile
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -21,6 +21,7 @@ import 'TermsandConditions.dart';
 
 class SettingScreen extends StatefulWidget {
   final String? type;
+
   final List<String>? roles;
 
   const SettingScreen({Key? key, this.type, this.roles}) : super(key: key);
@@ -173,10 +174,10 @@ class _SettingScreenState extends State<SettingScreen>
   }
 
   void _showPermissionDialog(
-    String title,
-    String message,
-    String permissionType,
-  ) {
+      String title,
+      String message,
+      String permissionType,
+      ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -289,9 +290,6 @@ class _SettingScreenState extends State<SettingScreen>
     );
   }
 
-  // CHANGED: Updated _shareApp method to include app logo and referral code
-  // Replace the _shareApp method with this updated version
-
   Future<void> _shareApp() async {
     try {
       // Get referral code from SharedPreferences
@@ -304,7 +302,7 @@ class _SettingScreenState extends State<SettingScreen>
         shareMessage += 'Use my referral code: $referralCode\n\n';
       }
       shareMessage +=
-          'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
+      'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
 
       // Load the image from assets as bytes
       final ByteData bytes = await rootBundle.load(
@@ -339,7 +337,7 @@ class _SettingScreenState extends State<SettingScreen>
           shareMessage += 'Use my referral code: $referralCode\n\n';
         }
         shareMessage +=
-            'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
+        'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
 
         await Share.share(shareMessage, subject: 'Check out this app!');
         _showSnackBar('App shared!');
@@ -386,6 +384,7 @@ class _SettingScreenState extends State<SettingScreen>
 
   @override
   Widget build(BuildContext context) {
+    print(widget.type);
     return ScreenUtilInit(
       designSize: const Size(375, 812),
       minTextAdapt: true,
@@ -450,7 +449,7 @@ class _SettingScreenState extends State<SettingScreen>
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Notifications',
@@ -491,7 +490,7 @@ class _SettingScreenState extends State<SettingScreen>
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Location Services',
@@ -529,134 +528,136 @@ class _SettingScreenState extends State<SettingScreen>
 
                         SizedBox(height: 24.h),
 
-                        // Distance Settings Section
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w),
-                          child: Text(
-                            'Distance Settings',
-                            style: TextStyle(
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.bold,
-                              color: ColorConstant.black,
+
+                        if (widget.type?.toLowerCase() != 'user') ...[
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.w),
+                            child: Text(
+                              'Distance Settings',
+                              style: TextStyle(
+                                fontSize: 20.sp,
+                                fontWeight: FontWeight.bold,
+                                color: ColorConstant.black,
+                              ),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 12.h),
+                          SizedBox(height: 12.h),
 
-                        Container(
-                          margin: EdgeInsets.symmetric(horizontal: 16.w),
-                          padding: EdgeInsets.all(16.w),
-                          decoration: BoxDecoration(
-                            color: ColorConstant.white,
-                            borderRadius: BorderRadius.circular(16.r),
-                          ),
-                          child: Column(
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Maximum Search Distance',
-                                        style: TextStyle(
-                                          fontSize: 16.sp,
-                                          fontWeight: FontWeight.w600,
-                                          color: ColorConstant.black,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 12.w,
-                                          vertical: 6.h,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: ColorConstant.moyoOrange
-                                              .withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            8.r,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '${settingsProvider.maxSearchDistance.toStringAsFixed(1)} ${selectedDistanceUnit == 'Kilometers' ? 'km' : 'miles'}',
+                          Container(
+                            margin: EdgeInsets.symmetric(horizontal: 16.w),
+                            padding: EdgeInsets.all(16.w),
+                            decoration: BoxDecoration(
+                              color: ColorConstant.white,
+                              borderRadius: BorderRadius.circular(16.r),
+                            ),
+                            child: Column(
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Maximum Search Distance',
                                           style: TextStyle(
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.bold,
-                                            color: ColorConstant.moyoOrange,
+                                            fontSize: 16.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: ColorConstant.black,
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  Text(
-                                    'Adjust your work radius to find jobs nearby',
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      color: ColorConstant.black.withOpacity(
-                                        0.6,
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 12.w,
+                                            vertical: 6.h,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: ColorConstant.moyoOrange
+                                                .withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${settingsProvider.maxSearchDistance.toStringAsFixed(1)} ${selectedDistanceUnit == 'Kilometers' ? 'km' : 'miles'}',
+                                            style: TextStyle(
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.bold,
+                                              color: ColorConstant.moyoOrange,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8.h),
+                                    Text(
+                                      'Adjust your work radius to find jobs nearby',
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        color: ColorConstant.black.withOpacity(
+                                          0.6,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  SliderTheme(
-                                    data: SliderThemeData(
-                                      activeTrackColor:
-                                          ColorConstant.moyoOrange,
-                                      inactiveTrackColor: ColorConstant
-                                          .moyoOrange
-                                          .withOpacity(0.3),
-                                      thumbColor: ColorConstant.moyoOrange,
-                                      overlayColor: ColorConstant.moyoOrange
-                                          .withOpacity(0.2),
-                                      trackHeight: 4.h,
-                                      thumbShape: RoundSliderThumbShape(
-                                        enabledThumbRadius: 12.r,
+                                    SizedBox(height: 8.h),
+                                    SliderTheme(
+                                      data: SliderThemeData(
+                                        activeTrackColor:
+                                        ColorConstant.moyoOrange,
+                                        inactiveTrackColor: ColorConstant
+                                            .moyoOrange
+                                            .withOpacity(0.3),
+                                        thumbColor: ColorConstant.moyoOrange,
+                                        overlayColor: ColorConstant.moyoOrange
+                                            .withOpacity(0.2),
+                                        trackHeight: 4.h,
+                                        thumbShape: RoundSliderThumbShape(
+                                          enabledThumbRadius: 12.r,
+                                        ),
                                       ),
-                                    ),
-                                    child: Slider(
-                                      value: settingsProvider.maxSearchDistance
-                                          .toDouble(),
-                                      min: 1.0,
-                                      max: 50.0,
-                                      divisions: 49,
-                                      onChanged: (value) {
-                                        settingsProvider.setMaxSearchDistance(
-                                          value.round(),
-                                        );
-                                      },
-                                      onChangeEnd: (value) async {
-                                        bool success = await settingsProvider
-                                            .updateWorkRadius(value.round());
-
-                                        if (success) {
-                                          _showSnackBar(
-                                            'Search distance updated successfully',
+                                      child: Slider(
+                                        value: settingsProvider.maxSearchDistance
+                                            .toDouble(),
+                                        min: 1.0,
+                                        max: 50.0,
+                                        divisions: 49,
+                                        onChanged: (value) {
+                                          settingsProvider.setMaxSearchDistance(
+                                            value.round(),
                                           );
-                                        } else {
-                                          if (settingsProvider.errorMessage !=
-                                              null) {
+                                        },
+                                        onChangeEnd: (value) async {
+                                          bool success = await settingsProvider
+                                              .updateWorkRadius(value.round());
+
+                                          if (success) {
                                             _showSnackBar(
-                                              settingsProvider.errorMessage!,
+                                              'Search distance updated successfully',
                                             );
                                           } else {
-                                            _showSnackBar(
-                                              'Failed to update search distance',
-                                            );
+                                            if (settingsProvider.errorMessage !=
+                                                null) {
+                                              _showSnackBar(
+                                                settingsProvider.errorMessage!,
+                                              );
+                                            } else {
+                                              _showSnackBar(
+                                                'Failed to update search distance',
+                                              );
+                                            }
                                           }
-                                        }
-                                      },
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
 
-                        SizedBox(height: 24.h),
+                          SizedBox(height: 24.h),
+                        ],
 
                         // Legal & About Section
                         Padding(
@@ -696,7 +697,7 @@ class _SettingScreenState extends State<SettingScreen>
                                       content: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                         children: [
                                           Text('Version: $appVersion'),
                                           SizedBox(height: 8.h),
@@ -719,7 +720,7 @@ class _SettingScreenState extends State<SettingScreen>
                                   padding: EdgeInsets.symmetric(vertical: 12.h),
                                   child: Row(
                                     mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'App Version',

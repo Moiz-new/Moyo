@@ -77,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
       print('=== Setting up notifications ===');
 
       final permissionGranted =
-      await NotificationService.requestNotificationPermission(context);
+          await NotificationService.requestNotificationPermission(context);
 
       if (permissionGranted) {
         print('✓ Notification permission granted');
@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushNamedAndRemoveUntil(
         context,
         "/UserCustomBottomNav",
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -174,7 +174,8 @@ class _LoginScreenState extends State<LoginScreen> {
             Expanded(
               flex: 6,
               child: SingleChildScrollView(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
 
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -249,7 +250,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               padding: EdgeInsets.symmetric(horizontal: 16.w),
                               child: Row(
                                 children: [
-                                  Text("🇮🇳", style: TextStyle(fontSize: 20.sp)),
+                                  Text(
+                                    "🇮🇳",
+                                    style: TextStyle(fontSize: 20.sp),
+                                  ),
                                   SizedBox(width: 4.w),
                                   Icon(
                                     Icons.arrow_drop_down,
@@ -270,13 +274,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             SizedBox(width: 12.w),
 
                             // Country Code Text
-                            Text(
-                              "+91",
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(height: 2.h),
+                                Text(
+                                  "+91",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
 
                             SizedBox(width: 12.w),
@@ -290,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 maxLength: 10,
                                 style: TextStyle(
                                   color: Colors.black,
-                                  fontSize: 16.sp,
+                                  fontSize: 18.sp,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 decoration: InputDecoration(
@@ -424,23 +434,23 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: provider.isLoading
                               ? SizedBox(
-                            height: 24.h,
-                            width: 24.w,
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
+                                  height: 24.h,
+                                  width: 24.w,
+                                  child: const CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
                               : Text(
-                            "Continue",
-                            style: TextStyle(
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.w600,
-                              color: _isTermsAccepted
-                                  ? Colors.white
-                                  : Colors.grey.shade600,
-                            ),
-                          ),
+                                  "Continue",
+                                  style: TextStyle(
+                                    fontSize: 18.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: _isTermsAccepted
+                                        ? Colors.white
+                                        : Colors.grey.shade600,
+                                  ),
+                                ),
                         ),
                       ),
 

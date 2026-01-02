@@ -13,6 +13,7 @@ import '../../../constants/colorConstant/color_constant.dart';
 import '../../../widgets/user_interested_provider_list_card.dart';
 import '../AssignedandCompleteUserServiceDetailsScreen.dart';
 import '../navigation/BookingProvider.dart';
+import 'PaymentOptionsScreen.dart';
 
 class RequestBroadcastScreen extends StatefulWidget {
   final int? userId;
@@ -426,6 +427,27 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
   }
 
   void _bookProvider(AcceptedBid bid, BuildContext dialogContext) {
+    final bidAmount = double.tryParse(bid.amount) ?? 0.0;
+
+    if (bid.service.serviceDays > 1 && bidAmount > 5000) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaymentOptionsScreen(
+            totalAmount: bidAmount,
+            categoryName: widget.categoryName ?? bid.service.category,
+            subcategoryName: widget.subcategoryName ?? bid.service.service,
+            serviceId: bid.serviceId,
+          ),
+        ),
+      ).then((paymentResult) {
+        if (paymentResult != null && paymentResult['status'] == 'success') {
+          // Payment successful, proceed with booking
+          _confirmBookingAfterPayment(bid, dialogContext, paymentResult);
+        }
+      });
+      return;
+    }
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.5),
@@ -533,6 +555,63 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
         ],
       ),
     );
+  }
+
+  // Add this new helper method to handle booking after payment
+  void _confirmBookingAfterPayment(
+    AcceptedBid bid,
+    BuildContext dialogContext,
+    Map<String, dynamic> paymentResult,
+  ) async {
+    final bookingProvider = Provider.of<BookingProvider>(
+      context,
+      listen: false,
+    );
+
+    try {
+      final response = await bookingProvider.bookProvider(
+        serviceId: bid.serviceId,
+        providerId: bid.provider.id.toString(),
+      );
+
+      if (response != null) {
+        _isDialogShowing = false;
+        Navigator.of(dialogContext).pop();
+        _closeScreen();
+
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AssignedandCompleteUserServiceDetailsScreen(
+              serviceId: bid.serviceId,
+            ),
+          ),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Booking confirmed with ${bid.provider.user.firstname}! Payment: ₹${paymentResult['amount']}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            backgroundColor: ColorConstant.moyoGreen,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll('Exception: ', ''),
+            style: const TextStyle(fontSize: 16),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _initializeAnimations() {
@@ -1082,12 +1161,11 @@ class NearbyProvider {
   }
 }
 
-// Existing classes remain the same
 class AcceptedBid {
   final String serviceId;
   final String bidId;
   final String amount;
-  final String status; // Add this field
+  final String status;
   final ServiceData service;
   final ProviderData provider;
   final String acceptedAt;
@@ -1096,7 +1174,7 @@ class AcceptedBid {
     required this.serviceId,
     required this.bidId,
     required this.amount,
-    required this.status, // Add this parameter
+    required this.status,
     required this.service,
     required this.provider,
     required this.acceptedAt,
@@ -1123,6 +1201,24 @@ class ServiceData {
   final String service;
   final String description;
   final String location;
+  final String budget;
+  final String maxBudget;
+  final String tenure;
+  final DateTime? scheduleDate;
+  final String? scheduleTime;
+  final String serviceType;
+  final String latitude;
+  final String longitude;
+  final String serviceMode;
+  final int? durationValue;
+  final String? durationUnit;
+  final int serviceDays; // ✅ ADDED
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String status;
+  final String paymentMethod;
+  final String paymentType;
+  final Map<String, dynamic>? dynamicFields;
 
   ServiceData({
     required this.id,
@@ -1131,16 +1227,59 @@ class ServiceData {
     required this.service,
     required this.description,
     required this.location,
+    required this.budget,
+    required this.maxBudget,
+    required this.tenure,
+    this.scheduleDate,
+    this.scheduleTime,
+    required this.serviceType,
+    required this.latitude,
+    required this.longitude,
+    required this.serviceMode,
+    this.durationValue,
+    this.durationUnit,
+    required this.serviceDays, // ✅ ADDED
+    this.startDate,
+    this.endDate,
+    required this.status,
+    required this.paymentMethod,
+    required this.paymentType,
+    this.dynamicFields,
   });
 
   factory ServiceData.fromJson(Map<String, dynamic> json) {
     return ServiceData(
-      id: json['id'] ?? '',
+      id: json['id']?.toString() ?? '',
       title: json['title'] ?? '',
       category: json['category'] ?? '',
       service: json['service'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
+      budget: json['budget']?.toString() ?? '0',
+      maxBudget: json['max_budget']?.toString() ?? '0',
+      tenure: json['tenure'] ?? '',
+      scheduleDate: json['schedule_date'] != null
+          ? DateTime.tryParse(json['schedule_date'])
+          : null,
+      scheduleTime: json['schedule_time'],
+      serviceType: json['service_type'] ?? '',
+      latitude: json['latitude']?.toString() ?? '0',
+      longitude: json['longitude']?.toString() ?? '0',
+      serviceMode: json['service_mode'] ?? '',
+      durationValue: json['duration_value'],
+      durationUnit: json['duration_unit'],
+      serviceDays: json['service_days'] ?? 0,
+      // ✅ ADDED
+      startDate: json['start_date'] != null
+          ? DateTime.tryParse(json['start_date'])
+          : null,
+      endDate: json['end_date'] != null
+          ? DateTime.tryParse(json['end_date'])
+          : null,
+      status: json['status'] ?? '',
+      paymentMethod: json['payment_method'] ?? '',
+      paymentType: json['payment_type'] ?? '',
+      dynamicFields: json['dynamic_fields'] as Map<String, dynamic>?,
     );
   }
 }

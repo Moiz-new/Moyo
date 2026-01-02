@@ -25,6 +25,11 @@ class EarningsProvider extends ChangeNotifier {
 
   String get filterType => _filterType;
 
+  bool get hasDataForSelectedDate {
+    if (_earningsData?.services == null) return false;
+    return getFilteredServices().isNotEmpty;
+  }
+
   Future<void> fetchEarnings({DateTime? date}) async {
     _isLoading = true;
     _errorMessage = null;
@@ -42,13 +47,26 @@ class EarningsProvider extends ChangeNotifier {
       }
 
       final dateToUse = date ?? _selectedDate;
+
+      // Month number for query parameter
+      final monthNumber = dateToUse.month;
+
+      // Format date based on filter type
       final formattedDate = _filterType == 'Month'
           ? '${dateToUse.year}-${dateToUse.month.toString().padLeft(2, '0')}'
           : '${dateToUse.year}-${dateToUse.month.toString().padLeft(2, '0')}-${dateToUse.day.toString().padLeft(2, '0')}';
 
+      // Debug prints
+      print('🔍 Filter Type: $_filterType');
+      print('🔍 Selected Date: $dateToUse');
+      print('🔍 Month Number: $monthNumber');
+      print('🔍 Formatted Date: $formattedDate');
+
       final url = Uri.parse(
-        '$base_url/bid/api/user/earnings?12=$formattedDate',
+        '$base_url/bid/api/user/earnings?$monthNumber=$formattedDate',
       );
+
+      print('🔍 API URL: $url');
 
       final response = await http.get(
         url,
@@ -58,24 +76,28 @@ class EarningsProvider extends ChangeNotifier {
         },
       );
 
-      print(response.body);
+      print('✅ token: ${providerAuthToken}');
+      print('✅ Response Status: ${response.statusCode}');
+      print('✅ Response Body: ${response.body}');
+
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         _earningsData = EarningsResponse.fromJson(jsonData);
         _errorMessage = null;
+        print('✅ Services Count: ${_earningsData?.services?.length ?? 0}');
       } else if (response.statusCode == 401) {
         _errorMessage = 'Unauthorized. Please login again.';
       } else {
         _errorMessage = 'Failed to load earnings: ${response.statusCode}';
       }
     } catch (e) {
+      print('❌ Error: $e');
       _errorMessage = 'Error: ${e.toString()}';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
-
   void setDate(DateTime date) {
     _selectedDate = date;
     fetchEarnings(date: date);

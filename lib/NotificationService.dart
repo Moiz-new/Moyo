@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:first_flutter/screens/provider_screens/navigation/ProviderChats/ProviderChatScreen.dart';
+import 'package:first_flutter/screens/provider_screens/navigation/ProviderRatingScreen.dart';
 import 'package:first_flutter/screens/provider_screens/provider_service_details_screen.dart';
 import 'package:first_flutter/screens/user_screens/user_custom_bottom_nav.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +30,7 @@ class NotificationService {
 
   // 🔥 NAVIGATION KEY: Global navigation ke liye
   static final GlobalKey<NavigatorState> navigatorKey =
-  GlobalKey<NavigatorState>();
+      GlobalKey<NavigatorState>();
 
   // ================== CUSTOM SOUND CONFIGURATION ==================
   static const String _defaultSoundFileName = 'notification_sound';
@@ -39,7 +40,9 @@ class NotificationService {
   static String _getSoundFileName(RemoteMessage message) {
     final title = message.notification?.title ?? '';
     if (title == 'Service Completed') {
-      print("🔊 Using SERVICE COMPLETED sound: $_serviceCompletedSoundFileName");
+      print(
+        "🔊 Using SERVICE COMPLETED sound: $_serviceCompletedSoundFileName",
+      );
       return _serviceCompletedSoundFileName;
     }
     print("🔊 Using DEFAULT sound: $_defaultSoundFileName");
@@ -112,19 +115,21 @@ class NotificationService {
 
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin
-    >()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(defaultChannel);
 
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin
-    >()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(serviceCompletedChannel);
 
     print("✅ Both channels created:");
     print("   Default: moyo_high_importance_custom ($_defaultSoundFileName)");
-    print("   Service: moyo_service_completed ($_serviceCompletedSoundFileName)");
+    print(
+      "   Service: moyo_service_completed ($_serviceCompletedSoundFileName)",
+    );
   }
 
   // Setup Local Notifications Plugin
@@ -210,8 +215,12 @@ class NotificationService {
     final isServiceCompleted = soundFileName == _serviceCompletedSoundFileName;
 
     final androidDetails = AndroidNotificationDetails(
-      isServiceCompleted ? 'moyo_service_completed' : 'moyo_high_importance_custom',
-      isServiceCompleted ? 'Service Completed Notifications' : 'Moyo Custom Notifications',
+      isServiceCompleted
+          ? 'moyo_service_completed'
+          : 'moyo_high_importance_custom',
+      isServiceCompleted
+          ? 'Service Completed Notifications'
+          : 'Moyo Custom Notifications',
       channelDescription: isServiceCompleted
           ? 'Service completion notifications with special sound'
           : 'Notifications with custom sound',
@@ -251,7 +260,9 @@ class NotificationService {
   }
 
   static Future<void> showLocalNotificationStatic(RemoteMessage message) async {
-    print("=== 📲 [BACKGROUND] Showing notification with conditional custom sound ===");
+    print(
+      "=== 📲 [BACKGROUND] Showing notification with conditional custom sound ===",
+    );
 
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
@@ -263,13 +274,17 @@ class NotificationService {
     // Get conditional sound and create appropriate channel
     final soundFileName = _getSoundFileName(message);
     final isServiceCompleted = soundFileName == _serviceCompletedSoundFileName;
-    final channelId = isServiceCompleted ? 'moyo_service_completed' : 'moyo_high_importance_custom';
+    final channelId = isServiceCompleted
+        ? 'moyo_service_completed'
+        : 'moyo_high_importance_custom';
 
     // Create channel for the specific sound
     final androidSound = RawResourceAndroidNotificationSound(soundFileName);
     final channel = AndroidNotificationChannel(
       channelId,
-      isServiceCompleted ? 'Service Completed Notifications' : 'Moyo Custom Notifications',
+      isServiceCompleted
+          ? 'Service Completed Notifications'
+          : 'Moyo Custom Notifications',
       description: isServiceCompleted
           ? 'Service completion notifications with special sound'
           : 'Notifications with custom sound',
@@ -283,14 +298,16 @@ class NotificationService {
 
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin
-    >()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
     // Notification details with conditional sound
     final androidDetails = AndroidNotificationDetails(
       channelId,
-      isServiceCompleted ? 'Service Completed Notifications' : 'Moyo Custom Notifications',
+      isServiceCompleted
+          ? 'Service Completed Notifications'
+          : 'Moyo Custom Notifications',
       channelDescription: isServiceCompleted
           ? 'Service completion notifications with special sound'
           : 'Notifications with custom sound',
@@ -330,6 +347,7 @@ class NotificationService {
   }
 
   // 🔥 UPDATED: Handle Notification Tap with Chat Message Support
+  // 🔥 UPDATED: Handle Notification Tap with Chat Message and Rating Support
   static void _handleNotificationTap(String? payload) {
     if (payload == null || payload.isEmpty) {
       print("⚠️ Empty payload received");
@@ -342,12 +360,38 @@ class NotificationService {
       final Map<String, dynamic> data = jsonDecode(payload);
       print("📦 Parsed data: $data");
 
+      // 🆕 CHECK FOR RATING NOTIFICATION
+      if (data.containsKey("type") && data["type"] == "new_rating") {
+        print("⭐ New Rating notification detected!");
+
+        // Extract rating data
+        String serviceId = data["service_id"]?.toString() ?? "";
+        String ratingId = data["rating_id"]?.toString() ?? "";
+        String userId = data["user_id"]?.toString() ?? "";
+
+        print("📍 Navigating to ProviderRatingScreen");
+        print("   Service ID: $serviceId");
+        print("   Rating ID: $ratingId");
+        print("   User ID: $userId");
+
+        final context = navigatorKey.currentContext;
+
+        if (context != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ProviderRatingScreen()),
+          );
+        } else {
+          print("❌ Navigator context not available");
+        }
+        return;
+      }
+
       // 🆕 CHECK FOR CHAT MESSAGE NOTIFICATION
       if (data.containsKey("type") &&
           data["type"] == "chat_message" &&
           data.containsKey("sender_type") &&
           data["sender_type"] == "user") {
-
         print("💬 Chat message from USER detected!");
 
         // Extract chat data
@@ -373,7 +417,8 @@ class NotificationService {
                 userName: userName,
                 userImage: userImage.isNotEmpty ? userImage : null,
                 userId: userId,
-                isOnline: true, // You can add online status to notification payload if needed
+                isOnline: true,
+                // You can add online status to notification payload if needed
                 userPhone: userPhone.isNotEmpty ? userPhone : null,
                 serviceId: serviceId,
                 providerId: userId,
@@ -418,9 +463,9 @@ class NotificationService {
 
   // Navigation methods (UNCHANGED)
   static Future<void> _navigateToUserServiceFromNotification(
-      BuildContext context,
-      String serviceId,
-      ) async {
+    BuildContext context,
+    String serviceId,
+  ) async {
     try {
       Navigator.pushAndRemoveUntil(
         context,
@@ -430,7 +475,7 @@ class NotificationService {
             notificationServiceId: serviceId,
           ),
         ),
-            (route) => false,
+        (route) => false,
       );
     } catch (e) {
       print("❌ Error navigating: $e");
@@ -439,8 +484,8 @@ class NotificationService {
 
   // ================== PERMISSIONS & TOKEN MANAGEMENT (UNCHANGED) ==================
   static Future<bool> requestNotificationPermission(
-      BuildContext context,
-      ) async {
+    BuildContext context,
+  ) async {
     print("=== 📢 Requesting Notification Permission ===");
 
     final prefs = await SharedPreferences.getInstance();
@@ -693,7 +738,9 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound(_serviceCompletedSoundFileName),
+      sound: RawResourceAndroidNotificationSound(
+        _serviceCompletedSoundFileName,
+      ),
       enableVibration: true,
       enableLights: true,
     );
@@ -723,8 +770,8 @@ class NotificationService {
   static Future<void> deleteOldChannel() async {
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin
-    >()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.deleteNotificationChannel('moyo_high_importance');
 
     print("🗑️ Old channel deleted");

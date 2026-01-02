@@ -591,7 +591,7 @@ class EditProfileProvider with ChangeNotifier {
   }
 
   // Verify mobile OTP
-// Verify mobile OTP
+  // Verify mobile OTP
   Future<bool> verifyMobileOtp({required String otp}) async {
     final mobile = mobileController.text.trim();
 
@@ -611,7 +611,7 @@ class EditProfileProvider with ChangeNotifier {
 
       if (token == null || token.isEmpty) {
         _mobileErrorMessage =
-        "Authentication token not found. Please login again.";
+            "Authentication token not found. Please login again.";
         _isMobileOtpVerifying = false;
         notifyListeners();
         return false;
@@ -681,6 +681,7 @@ class EditProfileProvider with ChangeNotifier {
       return false;
     }
   }
+
   // Resend Email OTP
   Future<void> resendEmailOtp() async {
     await sendEmailOtp();

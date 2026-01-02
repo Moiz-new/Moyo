@@ -217,19 +217,48 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
 
   Widget _buildServicesList(EarningsProvider provider) {
     final filteredServices = provider.getFilteredServices();
+
     if (filteredServices.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_outlined, size: 60.sp, color: Colors.grey),
+            Icon(
+              Icons.calendar_today_outlined,
+              size: 60.sp,
+              color: Colors.grey,
+            ),
             SizedBox(height: 16.h),
             Text(
-              'No service found',
+              'No data available',
               style: TextStyle(
-                fontSize: 16.sp,
+                fontSize: 18.sp,
+                color: ColorConstant.black,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              'No services found for ${provider.getFormattedDate()}',
+              style: TextStyle(
+                fontSize: 14.sp,
                 color: Colors.grey,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24.h),
+            ElevatedButton.icon(
+              onPressed: () => _showDatePicker(context, provider),
+              icon: Icon(Icons.date_range, size: 18.sp),
+              label: Text('Select Different Date'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ColorConstant.moyoOrange,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
               ),
             ),
           ],

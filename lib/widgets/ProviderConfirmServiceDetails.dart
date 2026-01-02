@@ -1368,7 +1368,7 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
                 ),
               ),
 
-              if (status == "arrived" || status == "in_progress")
+              if (status == "arrived")
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
@@ -1376,8 +1376,8 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
                   ),
                 ),
 
-              // Right Section - Call and Message
-              Row(
+              if (status != "open" && status != "pending")
+                Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 spacing: 16,

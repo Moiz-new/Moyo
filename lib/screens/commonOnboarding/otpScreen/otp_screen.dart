@@ -1,4 +1,4 @@
-// otp_screen.dart - WITH AUTO-FILL FEATURE AND FIXED KEYBOARD HANDLING
+// otp_screen.dart - WITH AUTO-FILL FEATURE AND REFERRAL CHECK
 import 'package:first_flutter/baseControllers/NavigationController/navigation_controller.dart';
 import 'package:first_flutter/constants/imgConstant/img_constant.dart';
 import 'package:first_flutter/constants/utils/app_text_style.dart';
@@ -166,6 +166,9 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
     );
   }
 
+  // ============================================================
+  // UPDATED METHOD WITH REFERRAL CHECK
+  // ============================================================
   Future<void> _verifyOtp() async {
     final provider = context.read<OtpScreenProvider>();
     final otp = _getOtpFromControllers();
@@ -201,13 +204,31 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
     );
 
     if (result != null && mounted) {
+      // FIRST PRIORITY: Check if referral code is needed
+      if (result['needsReferralCode'] == true) {
+        print('Referral code needed, navigating to ReferralCodeScreen');
+
+        // Setup notifications before navigating
+        await _setupNotifications();
+
+        // Navigate to ReferralCodeScreen
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          "/ReferralCodeScreen",
+          (route) => false,
+        );
+        return;
+      }
+
+      // SECOND PRIORITY: Check if email verification is needed
       if (result['needsEmailVerification'] == true) {
         print(
           'Email verification needed, navigating to email verification screen',
         );
         await _setupNotificationsAndNavigate();
       } else {
-        print('Email verified, requesting notification permission');
+        // Both referral and email are complete
+        print('All verifications complete, navigating to home');
         await _setupNotificationsAndNavigate();
       }
     } else if (provider.errorMessage != null && mounted) {
@@ -220,6 +241,46 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
     }
   }
 
+  Future<void> _setupNotifications() async {
+    final provider = context.read<OtpScreenProvider>();
+
+    try {
+      print('=== Setting up notifications ===');
+
+      final permissionGranted =
+          await NotificationService.requestNotificationPermission(context);
+
+      if (permissionGranted) {
+        print('✓ Notification permission granted');
+
+        final deviceToken = await NotificationService.getDeviceToken();
+
+        if (deviceToken != null && deviceToken.isNotEmpty) {
+          print('✓ Device token obtained: ${deviceToken.substring(0, 20)}...');
+
+          final updated = await provider.updateDeviceToken(
+            deviceToken: deviceToken,
+          );
+
+          if (updated) {
+            print('✓ Device token updated successfully');
+          } else {
+            print('⚠ Failed to update device token on server');
+          }
+        } else {
+          print('⚠ No device token available');
+        }
+      } else {
+        print('✗ User declined notification permission');
+      }
+    } catch (e) {
+      print('Error in notification setup: $e');
+    }
+  }
+
+  // ============================================================
+  // EXISTING METHOD: Setup notifications and navigate to home
+  // ============================================================
   Future<void> _setupNotificationsAndNavigate() async {
     final provider = context.read<OtpScreenProvider>();
 
@@ -290,7 +351,8 @@ class _OtpScreenState extends State<OtpScreen> with CodeAutoFill {
             Expanded(
               flex: 6,
               child: SingleChildScrollView(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(context).viewInsets.bottom,
                 ),

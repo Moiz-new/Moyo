@@ -22,6 +22,8 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+
   @override
   void initState() {
     super.initState();
@@ -114,8 +116,75 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  String? _validateName(String? value, String fieldName) {
+    if (value == null || value.trim().isEmpty) {
+      return '$fieldName is required';
+    }
+    // Only characters allowed, no numbers
+    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value)) {
+      return '$fieldName should contain only characters';
+    }
+    return null;
+  }
+
+  String? _validateAge(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Age is required';
+    }
+    final age = int.tryParse(value);
+    if (age == null) {
+      return 'Please enter a valid age';
+    }
+    if (value.length > 3) {
+      return 'Age should be maximum 3 digits';
+    }
+    if (age < 18) {
+      return 'Minimum age should be 18 years';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null; // Optional field
+    }
+    // Max 10 digits, no 0 or + sign
+    if (value.length != 10) {
+      return 'Phone number must be exactly 10 digits';
+    }
+    if (value.startsWith('0')) {
+      return 'Phone number should not start with 0';
+    }
+    if (!RegExp(r'^[1-9][0-9]{9}$').hasMatch(value)) {
+      return 'Please enter a valid phone number';
+    }
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null; // Optional field
+    }
+    // Basic email validation
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
 
   Future<void> _handleSave() async {
+    // Validate form first
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fix all validation errors'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final editProvider = context.read<EditProfileProvider>();
 
     editProvider.clearError();
@@ -163,6 +232,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
     }
   }
+
   void _showEmailVerificationRequiredDialog() {
     showDialog(
       context: context,
@@ -377,6 +447,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final editProvider = context.read<EditProfileProvider>();
     editProvider.clearEmailError();
 
+    // Validate email before sending OTP
+    final emailError = _validateEmail(editProvider.emailController.text);
+    if (emailError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(emailError),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final otpSent = await editProvider.sendEmailOtp();
 
     if (otpSent && mounted) {
@@ -405,6 +488,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _handleVerifyMobile() async {
     final editProvider = context.read<EditProfileProvider>();
     editProvider.clearMobileError();
+
+    // Validate mobile before sending OTP
+    final mobileError = _validatePhone(editProvider.mobileController.text);
+    if (mobileError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mobileError),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     final otpSent = await editProvider.sendMobileOtp();
 
@@ -497,25 +593,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
           return Stack(
             children: [
-              SingleChildScrollView(
-                padding: EdgeInsets.all(16.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(height: 10.h),
-                    _buildProfileImage(editProvider),
-                    SizedBox(height: 30.h),
-                    _buildForm(editProvider),
-                    SizedBox(height: 30.h),
-                    ButtonLarge(
-                      isIcon: false,
-                      label: "Save Changes",
-                      backgroundColor: ColorConstant.moyoOrange,
-                      labelColor: Colors.white,
-                      onTap: editProvider.isLoading ? null : _handleSave,
-                    ),
-                    SizedBox(height: 20.h),
-                  ],
+              Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(16.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(height: 10.h),
+                      _buildProfileImage(editProvider),
+                      SizedBox(height: 30.h),
+                      _buildForm(editProvider),
+                      SizedBox(height: 30.h),
+                      ButtonLarge(
+                        isIcon: false,
+                        label: "Save Changes",
+                        backgroundColor: ColorConstant.moyoOrange,
+                        labelColor: Colors.white,
+                        onTap: editProvider.isLoading ? null : _handleSave,
+                      ),
+                      SizedBox(height: 20.h),
+                    ],
+                  ),
                 ),
               ),
               if (editProvider.isLoading ||
@@ -616,6 +715,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           label: "First Name",
           icon: Icons.person_outline,
           hint: "Enter your first name",
+          validator: (value) => _validateName(value, 'First name'),
         ),
         SizedBox(height: 20.h),
         _buildTextField(
@@ -623,6 +723,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           label: "Last Name",
           icon: Icons.person_outline,
           hint: "Enter your last name",
+          validator: (value) => _validateName(value, 'Last name'),
         ),
         SizedBox(height: 20.h),
         _buildTextField(
@@ -631,6 +732,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           icon: Icons.alternate_email,
           hint: "Enter your username",
           enabled: !provider.isUsernameSet,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Username is required';
+            }
+            return null;
+          },
         ),
         SizedBox(height: 20.h),
         _buildEmailFieldWithVerify(provider),
@@ -643,7 +750,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           icon: Icons.cake_outlined,
           hint: "Enter your age",
           keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(3),
+          ],
+          validator: _validateAge,
         ),
         SizedBox(height: 20.h),
         _buildGenderSelector(provider),
@@ -721,10 +832,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
+                child: TextFormField(
                   controller: provider.emailController,
                   enabled: !isEmailLocked,
                   keyboardType: TextInputType.emailAddress,
+                  validator: _validateEmail,
                   onChanged: (value) {
                     setState(() {});
                   },
@@ -750,6 +862,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.r),
                       borderSide: BorderSide.none,
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.red, width: 1.w),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.red, width: 2.w),
                     ),
                     filled: true,
                     fillColor: isEmailLocked
@@ -921,10 +1041,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
+                child: TextFormField(
                   controller: provider.mobileController,
                   enabled: !isMobileLocked,
                   keyboardType: TextInputType.phone,
+                  validator: _validatePhone,
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(10),
@@ -954,6 +1075,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.r),
                       borderSide: BorderSide.none,
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.red, width: 1.w),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.red, width: 2.w),
                     ),
                     filled: true,
                     fillColor: isMobileLocked
@@ -1160,6 +1289,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     bool enabled = true,
     TextInputType keyboardType = TextInputType.text,
     List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1185,11 +1315,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             ],
           ),
-          child: TextField(
+          child: TextFormField(
             controller: controller,
             enabled: enabled,
             keyboardType: keyboardType,
             inputFormatters: inputFormatters,
+            validator: validator,
             style: TextStyle(
               fontSize: 16.sp,
               color: enabled ? Colors.black87 : Colors.grey.shade600,
@@ -1208,6 +1339,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
                 borderSide: BorderSide.none,
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.red, width: 1.w),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: BorderSide(color: Colors.red, width: 2.w),
               ),
               filled: true,
               fillColor: enabled ? Colors.white : Colors.grey.shade100,

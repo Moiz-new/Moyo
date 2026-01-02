@@ -4,7 +4,7 @@ description: "A new Flutter project."
 publish_to: 'none'
 
 
-version: 10.0.0+10
+version: 11.0.0+11
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
@@ -51,6 +51,8 @@ dependencies:
   razorpay_flutter: ^1.4.0
   connectivity_plus: ^7.0.0
   internet_connection_checker: ^1.0.0+1
+  flutter_bloc: ^9.1.1
+  bloc: ^9.1.0
 
 
 dev_dependencies:

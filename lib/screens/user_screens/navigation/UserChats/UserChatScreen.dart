@@ -41,7 +41,6 @@ class _UserChatScreenState extends State<UserChatScreen>
   bool _isTyping = false;
   bool _chatInitialized = false;
   bool _isSending = false;
-  int _previousMessageCount = 0;
 
   Timer? _pollingTimer;
 
@@ -49,16 +48,9 @@ class _UserChatScreenState extends State<UserChatScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    print("=== UserChatScreen initState ===");
-    print("Service ID: ${widget.serviceId}");
-    print("Provider ID: ${widget.providerId}");
-    print("User Name: ${widget.userName}");
-
     _messageController.addListener(_onTextChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print("PostFrameCallback - calling _initializeChat");
       _initializeChat();
     });
   }
@@ -76,15 +68,7 @@ class _UserChatScreenState extends State<UserChatScreen>
   }
 
   Future<void> _initializeChat() async {
-    print("=== _initializeChat called ===");
-    print("serviceId is null: ${widget.serviceId == null}");
-    print("providerId is null: ${widget.providerId == null}");
-
     if (widget.serviceId == null || widget.providerId == null) {
-      print("ERROR: serviceId or providerId is null!");
-      print("serviceId: ${widget.serviceId}");
-      print("providerId: ${widget.providerId}");
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -103,19 +87,12 @@ class _UserChatScreenState extends State<UserChatScreen>
     }
 
     try {
-      final chatProvider = Provider.of<UserChatProvider>(
-        context,
-        listen: false,
-      );
-      print("ChatProvider obtained successfully");
+      final chatProvider = Provider.of<UserChatProvider>(context, listen: false);
 
-      print("Calling chatProvider.initiateChat...");
       final success = await chatProvider.initiateChat(
         serviceId: widget.serviceId!,
         providerId: widget.providerId!,
       );
-
-      print("initiateChat returned: $success");
 
       if (success) {
         setState(() {
@@ -124,6 +101,7 @@ class _UserChatScreenState extends State<UserChatScreen>
 
         _startPolling();
 
+        // ✅ SCROLL TO BOTTOM AFTER LOADING MESSAGES
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _scrollToBottom(immediate: true);
         });
@@ -138,9 +116,7 @@ class _UserChatScreenState extends State<UserChatScreen>
           );
         }
       } else {
-        print("Chat initialization failed");
         if (mounted && chatProvider.error != null) {
-          print("Error: ${chatProvider.error}");
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(chatProvider.error!),
@@ -155,11 +131,7 @@ class _UserChatScreenState extends State<UserChatScreen>
           );
         }
       }
-    } catch (e, stackTrace) {
-      print("=== EXCEPTION in _initializeChat ===");
-      print("Error: $e");
-      print("StackTrace: $stackTrace");
-
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -183,8 +155,6 @@ class _UserChatScreenState extends State<UserChatScreen>
     }
 
     final chatProvider = Provider.of<UserChatProvider>(context, listen: false);
-
-    print("🔄 Starting chat history polling (every 1 second)");
     chatProvider.setScreenActive(true);
 
     _pollingTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
@@ -203,18 +173,13 @@ class _UserChatScreenState extends State<UserChatScreen>
   }
 
   void _stopPolling() {
-    print("⏸️ Stopping chat history polling");
-
     if (_pollingTimer != null) {
       _pollingTimer!.cancel();
       _pollingTimer = null;
     }
 
     if (mounted) {
-      final chatProvider = Provider.of<UserChatProvider>(
-        context,
-        listen: false,
-      );
+      final chatProvider = Provider.of<UserChatProvider>(context, listen: false);
       chatProvider.setScreenActive(false);
     }
   }
@@ -241,8 +206,6 @@ class _UserChatScreenState extends State<UserChatScreen>
     final messageText = _messageController.text.trim();
     final chatProvider = Provider.of<UserChatProvider>(context, listen: false);
 
-    _previousMessageCount = chatProvider.messages.length;
-
     setState(() {
       _messageController.clear();
       _isSending = true;
@@ -257,6 +220,7 @@ class _UserChatScreenState extends State<UserChatScreen>
       });
 
       if (success) {
+        // ✅ SCROLL TO BOTTOM AFTER SENDING
         _scrollToBottom();
       } else {
         if (mounted) {
@@ -278,19 +242,19 @@ class _UserChatScreenState extends State<UserChatScreen>
         }
       }
     } catch (e) {
-      print("Error sending message: $e");
       setState(() {
         _isSending = false;
       });
     }
   }
 
+  // ✅ SMOOTH SCROLL TO BOTTOM
   void _scrollToBottom({bool immediate = false}) {
-    Future.delayed(Duration(milliseconds: immediate ? 100 : 300), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients && mounted) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: immediate ? 200 : 400),
+          duration: Duration(milliseconds: immediate ? 100 : 300),
           curve: Curves.easeOut,
         );
       }
@@ -314,13 +278,12 @@ class _UserChatScreenState extends State<UserChatScreen>
       appBar: _buildAppBar(),
       body: Consumer<UserChatProvider>(
         builder: (context, chatProvider, child) {
-          // ✅ Auto-scroll logic - moved outside postFrameCallback
-          if (chatProvider.messages.length > _previousMessageCount && mounted) {
-            _previousMessageCount = chatProvider.messages.length;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
+          // ✅ AUTO SCROLL WHEN NEW MESSAGE ARRIVES
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (chatProvider.messages.isNotEmpty && mounted) {
               _scrollToBottom();
-            });
-          }
+            }
+          });
 
           if (chatProvider.isLoading && !_chatInitialized) {
             return Center(
@@ -414,33 +377,33 @@ class _UserChatScreenState extends State<UserChatScreen>
                 child: ClipOval(
                   child: widget.userImage != null
                       ? CachedNetworkImage(
-                          imageUrl: widget.userImage!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: ColorConstant.moyoOrangeFade,
-                            child: Icon(
-                              Icons.person,
-                              color: ColorConstant.moyoOrange,
-                              size: 20.sp,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: ColorConstant.moyoOrangeFade,
-                            child: Icon(
-                              Icons.person,
-                              color: ColorConstant.moyoOrange,
-                              size: 20.sp,
-                            ),
-                          ),
-                        )
+                    imageUrl: widget.userImage!,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: ColorConstant.moyoOrangeFade,
+                      child: Icon(
+                        Icons.person,
+                        color: ColorConstant.moyoOrange,
+                        size: 20.sp,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: ColorConstant.moyoOrangeFade,
+                      child: Icon(
+                        Icons.person,
+                        color: ColorConstant.moyoOrange,
+                        size: 20.sp,
+                      ),
+                    ),
+                  )
                       : Container(
-                          color: ColorConstant.moyoOrangeFade,
-                          child: Icon(
-                            Icons.person,
-                            color: ColorConstant.moyoOrange,
-                            size: 20.sp,
-                          ),
-                        ),
+                    color: ColorConstant.moyoOrangeFade,
+                    child: Icon(
+                      Icons.person,
+                      color: ColorConstant.moyoOrange,
+                      size: 20.sp,
+                    ),
+                  ),
                 ),
               ),
               if (widget.isOnline)
@@ -480,7 +443,7 @@ class _UserChatScreenState extends State<UserChatScreen>
     );
   }
 
-  // ✅ FIXED: Normal ListView (NOT reversed) - Oldest first, newest at bottom
+  // ✅ WHATSAPP STYLE LIST - OLDEST TO NEWEST (TOP TO BOTTOM)
   Widget _buildMessagesList(UserChatProvider chatProvider) {
     return ListView.builder(
       controller: _scrollController,
@@ -488,9 +451,7 @@ class _UserChatScreenState extends State<UserChatScreen>
       itemCount: chatProvider.messages.length,
       itemBuilder: (context, index) {
         final message = chatProvider.messages[index];
-        // ✅ Show date for first message or when day changes
-        final showDate =
-            index == 0 ||
+        final showDate = index == 0 ||
             !_isSameDay(
               message.createdAt,
               chatProvider.messages[index - 1].createdAt,
@@ -725,21 +686,21 @@ class _UserChatScreenState extends State<UserChatScreen>
                 ),
                 child: _isSending
                     ? Padding(
-                        padding: EdgeInsets.all(12.w),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        ),
-                      )
+                  padding: EdgeInsets.all(12.w),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
+                  ),
+                )
                     : Icon(
-                        Icons.send,
-                        color: (_isTyping && _chatInitialized)
-                            ? Colors.white
-                            : Colors.grey.shade500,
-                        size: 20.sp,
-                      ),
+                  Icons.send,
+                  color: (_isTyping && _chatInitialized)
+                      ? Colors.white
+                      : Colors.grey.shade500,
+                  size: 20.sp,
+                ),
               ),
             ),
           ],

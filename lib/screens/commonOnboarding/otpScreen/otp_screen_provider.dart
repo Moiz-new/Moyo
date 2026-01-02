@@ -80,10 +80,6 @@ class OtpScreenProvider extends ChangeNotifier {
     }
   }
 
-  // Add this new method to otp_screen_provider.dart
-  // Place it after the existing verifyOtp method
-
-  /// Verify mobile OTP for Google login users (only updates mobile, doesn't replace token)
   /// Verify mobile OTP for Google login users (only updates mobile, doesn't replace token)
   Future<Map<String, dynamic>?> verifyMobileOnly({
     required String mobile,
@@ -154,6 +150,15 @@ class OtpScreenProvider extends ChangeNotifier {
           // Merge new mobile data with existing user data
           existingUserData['mobile'] = mobile;
 
+          // Save is_referred status from response
+          if (userData['is_referred'] != null) {
+            existingUserData['is_referred'] = userData['is_referred'];
+            await prefs.setBool(
+              'is_referred',
+              userData['is_referred'] ?? false,
+            );
+          }
+
           // Also update email verification status from response
           if (userData['email_verified'] != null) {
             existingUserData['email_verified'] = userData['email_verified'];
@@ -179,10 +184,12 @@ class OtpScreenProvider extends ChangeNotifier {
 
           // Check if email verification is needed
           final isEmailVerified = userData['email_verified'] ?? false;
+          final isReferred = userData['is_referred'] ?? false;
 
           return {
             'success': true,
             'needsEmailVerification': !isEmailVerified,
+            'needsReferralCode': !isReferred,
             'userEmail': userData['email'],
           };
         } else {
@@ -228,6 +235,7 @@ class OtpScreenProvider extends ChangeNotifier {
         'is_email_verified',
         userData['is_email_verified'] ?? false,
       );
+      await prefs.setBool('is_referred', userData['is_referred'] ?? false);
 
       return true;
     } catch (e) {
@@ -308,7 +316,7 @@ class OtpScreenProvider extends ChangeNotifier {
   }
 
   /// Verify OTP with API and save data
-  /// Returns a map with success status and needsEmailVerification flag
+  /// Returns a map with success status, needsEmailVerification, and needsReferralCode flags
   Future<Map<String, dynamic>?> verifyOtp({
     required String mobile,
     required String otp,
@@ -346,10 +354,13 @@ class OtpScreenProvider extends ChangeNotifier {
 
             // Check if email verification is needed
             final isEmailVerified = userData['is_email_verified'] ?? false;
+            // Check if referral code is needed
+            final isReferred = userData['is_referred'] ?? false;
 
             return {
               'success': true,
               'needsEmailVerification': !isEmailVerified,
+              'needsReferralCode': !isReferred,
               'userEmail': userData['email'],
             };
           } else {
@@ -643,6 +654,17 @@ class OtpScreenProvider extends ChangeNotifier {
     }
   }
 
+  /// Check if user has entered referral code
+  Future<bool> isReferred() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('is_referred') ?? false;
+    } catch (e) {
+      print('Error checking referral status: $e');
+      return false;
+    }
+  }
+
   /// Clear all stored data (for logout)
   Future<bool> clearAuthData() async {
     try {
@@ -657,6 +679,7 @@ class OtpScreenProvider extends ChangeNotifier {
       await prefs.remove('user_email');
       await prefs.remove('referral_code');
       await prefs.remove('is_email_verified');
+      await prefs.remove('is_referred');
       await prefs.remove('device_token');
       return true;
     } catch (e) {

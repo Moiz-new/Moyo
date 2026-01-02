@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../constants/colorConstant/color_constant.dart';
 import '../provider_service_details_screen.dart';
 import 'NotificationProvider.dart';
+import 'ProviderRatingScreen.dart';
 
 class NotificationListScreen extends StatefulWidget {
   @override
@@ -54,7 +55,11 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
     );
   }
 
-  Future<void> _markNotificationAsRead(int notificationId, String serviceId) async {
+  Future<void> _markNotificationAsRead(
+    int notificationId,
+    String serviceId,
+    String title,
+  ) async {
     if (_providerToken != null) {
       final success = await Provider.of<NotificationProvider>(
         context,
@@ -62,16 +67,21 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       ).markAsRead(_providerToken!, notificationId);
 
       if (success) {
-        // ✅ FIX 1: Navigator.push MUST be inside parentheses correctly
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ProviderServiceDetailsScreen(serviceId: serviceId),
-          ),
-        );
+        if (title == "New Rating Received ⭐") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ProviderRatingScreen()),
+          );
+        } else {
+          /* Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  ProviderServiceDetailsScreen(serviceId: serviceId),
+            ),
+          );*/
+        }
 
-        // ✅ FIX 2: SnackBar must be AFTER the push or before it—not inside push
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Notification marked as read'),
@@ -89,7 +99,6 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       }
     }
   }
-
 
   Future<void> _markAllAsRead() async {
     if (_providerToken != null) {
@@ -260,10 +269,12 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
                   final serviceId = notification["data"]["service_id"];
                   print("Extracted serviceId: $serviceId");
 
-
                   return GestureDetector(
-
-                    onTap: () => _markNotificationAsRead(notification['id'],serviceId),
+                    onTap: () => _markNotificationAsRead(
+                      notification['id'],
+                      serviceId,
+                      notification['title'] ?? '',
+                    ),
                     child: Container(
                       margin: EdgeInsets.only(bottom: 12.sp),
                       decoration: BoxDecoration(

@@ -13,28 +13,98 @@ class ProviderChatProvider with ChangeNotifier {
   String? _chatId;
   List<ChatMessage> _messages = [];
   Subscription? _chatSubscription;
+  Subscription? _historySubscription; // ✅ NEW: For real-time history updates
   final NatsService _natsService = NatsService();
-
-  // ✅ Track if currently active on chat screen
   bool _isScreenActive = false;
 
   bool get isLoading => _isLoading;
+
   String? get error => _error;
+
   String? get chatId => _chatId;
+
   List<ChatMessage> get messages => _messages;
 
-  // ✅ Call this when user enters chat screen
+  // ✅ Call this when user enters/exits chat screen
   void setScreenActive(bool isActive) {
     _isScreenActive = isActive;
     if (!isActive) {
-      print("📴 Chat screen inactive - stopping real-time updates");
+      print("📴 Chat screen inactive - pausing updates");
     } else {
-      print("📱 Chat screen active - real-time updates enabled");
+      print("📱 Chat screen active - updates enabled");
     }
   }
 
-  // ✅ Modified fetchChatHistory to support silent mode (no loading indicator)
-  Future<bool> fetchChatHistory({required String chatId, bool silent = false}) async {
+  // ✅ SUBSCRIBE TO CHAT HISTORY UPDATES (Real-time)
+  Future<void> subscribeToHistoryUpdates({required String chatId}) async {
+    try {
+      if (!_natsService.isConnected) {
+        await _natsService.connect();
+      }
+
+      // Subscribe to history updates
+      _historySubscription = _natsService.subscribe('chat.history.$chatId', (
+        message,
+      ) {
+        if (!_isScreenActive) return;
+
+        try {
+          final responseData = json.decode(message);
+
+          if (responseData['success'] == true && responseData['data'] != null) {
+            List<dynamic> messagesData = responseData['data'];
+            _updateMessagesFromHistory(messagesData);
+          }
+        } catch (e) {
+          print("Error processing history update: $e");
+        }
+      });
+
+      print("✅ Subscribed to chat history updates: chat.history.$chatId");
+    } catch (e) {
+      print("History Subscription Error: $e");
+    }
+  }
+
+  // ✅ UPDATE MESSAGES FROM HISTORY DATA
+  void _updateMessagesFromHistory(List<dynamic> messagesData) {
+    Set<String> existingIds = _messages.map((m) => m.id).toSet();
+    bool hasChanges = false;
+
+    for (var msgData in messagesData) {
+      try {
+        final chatMessage = ChatMessage.fromJson(msgData);
+
+        if (!existingIds.contains(chatMessage.id)) {
+          // New message
+          _messages.add(chatMessage);
+          hasChanges = true;
+        } else {
+          // Update existing message (e.g., read status change)
+          int index = _messages.indexWhere((m) => m.id == chatMessage.id);
+          if (index != -1) {
+            _messages[index] = chatMessage;
+            hasChanges = true;
+          }
+        }
+      } catch (e) {
+        print("Error parsing message: $e");
+      }
+    }
+
+    if (hasChanges) {
+      // Sort by timestamp (oldest to newest for proper display)
+      _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      notifyListeners();
+      print("✅ Messages updated from history");
+    }
+  }
+
+  // ✅ INITIAL FETCH (One-time on load)
+  Future<bool> fetchChatHistory({
+    required String chatId,
+    bool silent = false,
+  }) async {
     print("=== FETCHING CHAT HISTORY ${silent ? '(SILENT)' : ''} ===");
     print("Chat ID: $chatId");
 
@@ -49,8 +119,8 @@ class ProviderChatProvider with ChangeNotifier {
         print("NATS not connected, attempting to connect...");
         final connected = await _natsService.connect();
         if (!connected) {
-          _error = 'Failed to connect to messaging service';
           if (!silent) {
+            _error = 'Failed to connect to messaging service';
             _isLoading = false;
             notifyListeners();
           }
@@ -81,41 +151,10 @@ class ProviderChatProvider with ChangeNotifier {
 
       if (responseData['success'] == true && responseData['data'] != null) {
         List<dynamic> messagesData = responseData['data'];
-
-        // ✅ Track existing message IDs
-        Set<String> existingIds = _messages.map((m) => m.id).toSet();
-        bool hasNewMessages = false;
-
-        for (var msgData in messagesData) {
-          try {
-            final chatMessage = ChatMessage.fromJson(msgData);
-            if (!existingIds.contains(chatMessage.id)) {
-              _messages.add(chatMessage);
-              hasNewMessages = true;
-            } else {
-              // ✅ Update existing message (e.g., read status)
-              int index = _messages.indexWhere((m) => m.id == chatMessage.id);
-              if (index != -1) {
-                _messages[index] = chatMessage;
-              }
-            }
-          } catch (e) {
-            print("Error parsing message: $e");
-          }
-        }
-
-        _messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-        if (hasNewMessages || !silent) {
-          print("✅ Loaded ${_messages.length} messages (${hasNewMessages ? 'NEW DATA' : 'NO CHANGES'})");
-        }
+        _updateMessagesFromHistory(messagesData);
 
         if (!silent) {
           _isLoading = false;
-        }
-
-        // ✅ Only notify listeners if there are changes or it's not a silent fetch
-        if (hasNewMessages || !silent) {
           notifyListeners();
         }
 
@@ -140,6 +179,7 @@ class ProviderChatProvider with ChangeNotifier {
     }
   }
 
+  // ✅ SUBSCRIBE TO NEW MESSAGES
   Future<void> subscribeToMessages({required String chatId}) async {
     try {
       print("=== Subscribing to chat messages ===");
@@ -147,8 +187,9 @@ class ProviderChatProvider with ChangeNotifier {
         await _natsService.connect();
       }
 
-      _chatSubscription = _natsService.subscribe('chat.message.$chatId', (message) {
-        // ✅ Only process if screen is active
+      _chatSubscription = _natsService.subscribe('chat.message.$chatId', (
+        message,
+      ) {
         if (!_isScreenActive) {
           print("⏸️ Message received but screen inactive, skipping UI update");
           return;
@@ -160,23 +201,28 @@ class ProviderChatProvider with ChangeNotifier {
 
           final chatMessage = ChatMessage.fromJson(msgData);
           bool exists = _messages.any((m) => m.id == chatMessage.id);
+
           if (!exists) {
             _messages.add(chatMessage);
-            _messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
             notifyListeners();
-            print("✅ New message added (sorted newest first)");
+            print("✅ New message added (sorted oldest to newest)");
           }
         } catch (e) {
           print("Error processing message: $e");
         }
       });
-      print("✅ Subscribed successfully");
+      print("✅ Subscribed successfully to chat.message.$chatId");
     } catch (e) {
       print("Subscription error: $e");
     }
   }
 
-  Future<bool> initiateChat({required String serviceId, required String providerId, int retryCount = 0}) async {
+  Future<bool> initiateChat({
+    required String serviceId,
+    required String providerId,
+    int retryCount = 0,
+  }) async {
     print("=== INITIATE CHAT (Attempt ${retryCount + 1}) ===");
     _isLoading = true;
     _error = null;
@@ -197,11 +243,16 @@ class ProviderChatProvider with ChangeNotifier {
         'user_id': int.tryParse(providerId) ?? providerId,
       };
 
-      final response = await http.post(
-        Uri.parse('$base_url/bid/api/chat/provider/initiate'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
-        body: jsonEncode(requestBody),
-      ).timeout(Duration(seconds: 10));
+      final response = await http
+          .post(
+            Uri.parse('$base_url/bid/api/chat/provider/initiate'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(requestBody),
+          )
+          .timeout(Duration(seconds: 10));
 
       print("Status: ${response.statusCode}");
       print("Response: ${response.body}");
@@ -210,7 +261,8 @@ class ProviderChatProvider with ChangeNotifier {
         final data = jsonDecode(response.body);
         if (data['success'] == true && data['chat'] != null) {
           final chatData = data['chat'];
-          _chatId = chatData['id']?.toString() ?? chatData['chat_id']?.toString();
+          _chatId =
+              chatData['id']?.toString() ?? chatData['chat_id']?.toString();
 
           if (_chatId != null && _chatId!.isNotEmpty) {
             bool natsConnected = false;
@@ -225,11 +277,22 @@ class ProviderChatProvider with ChangeNotifier {
             }
 
             if (natsConnected) {
-              final historySuccess = await fetchChatHistory(chatId: _chatId!);
-              if (historySuccess) {
-                await subscribeToMessages(chatId: _chatId!);
+              try {
+                // Initial fetch
+                final historySuccess = await fetchChatHistory(chatId: _chatId!);
+
+                if (historySuccess) {
+                  // Subscribe to new messages
+                  await subscribeToMessages(chatId: _chatId!);
+
+                  // ✅ CRITICAL: Subscribe to history updates for real-time sync
+                  await subscribeToHistoryUpdates(chatId: _chatId!);
+                }
+              } catch (e) {
+                print("NATS operations error: $e");
               }
             }
+
             _isLoading = false;
             notifyListeners();
             return true;
@@ -271,7 +334,10 @@ class ProviderChatProvider with ChangeNotifier {
       final requestBody = {'chat_id': _chatId, 'message': message};
       final response = await http.post(
         Uri.parse('$base_url/bid/api/chat/provider/send-message'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode(requestBody),
       );
 
@@ -285,7 +351,7 @@ class ProviderChatProvider with ChangeNotifier {
           bool exists = _messages.any((m) => m.id == chatMessage.id);
           if (!exists) {
             _messages.add(chatMessage);
-            _messages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            _messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
             notifyListeners();
           }
         }
@@ -319,17 +385,30 @@ class ProviderChatProvider with ChangeNotifier {
     _chatId = null;
     _messages = [];
     _isScreenActive = false;
+
+    // Unsubscribe from all subscriptions
     if (_chatSubscription != null && _chatId != null) {
       _natsService.unsubscribe('chat.message.$_chatId');
       _chatSubscription = null;
     }
+
+    if (_historySubscription != null && _chatId != null) {
+      _natsService.unsubscribe('chat.history.$_chatId');
+      _historySubscription = null;
+    }
+
     notifyListeners();
   }
 
   @override
   void dispose() {
-    if (_chatSubscription != null && _chatId != null) {
-      _natsService.unsubscribe('chat.message.$_chatId');
+    if (_chatId != null) {
+      if (_chatSubscription != null) {
+        _natsService.unsubscribe('chat.message.$_chatId');
+      }
+      if (_historySubscription != null) {
+        _natsService.unsubscribe('chat.history.$_chatId');
+      }
     }
     super.dispose();
   }
@@ -374,7 +453,9 @@ class ChatMessage {
 
     DateTime createdAt;
     try {
-      createdAt = json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now();
+      createdAt = json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now();
     } catch (e) {
       createdAt = DateTime.now();
     }

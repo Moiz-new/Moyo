@@ -122,9 +122,7 @@ class _UserAppbarState extends State<UserAppbar> {
             profile['provider']['is_blocked'] == true) {
           isBlocked = true;
         }
-
-
-      }else if (response.statusCode == 403) {
+      } else if (response.statusCode == 403) {
         // Show modern blocked dialog
         if (context.mounted) {
           await BlockedDialog.show(context);
@@ -133,7 +131,7 @@ class _UserAppbarState extends State<UserAppbar> {
             Navigator.pushNamedAndRemoveUntil(
               context,
               '/login',
-                  (route) => false,
+              (route) => false,
             );
           }
         }
@@ -142,7 +140,6 @@ class _UserAppbarState extends State<UserAppbar> {
       print('Error checking block status: $e');
     }
   }
-
 
   void _startLocationTracking() {
     const LocationSettings locationSettings = LocationSettings(
@@ -452,10 +449,7 @@ class _UserAppbarState extends State<UserAppbar> {
                             width: 2,
                           ),
                         ),
-                        constraints: BoxConstraints(
-                          minWidth: 6,
-                          minHeight: 6,
-                        ),
+                        constraints: BoxConstraints(minWidth: 6, minHeight: 6),
                         child: Center(
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
@@ -508,10 +502,7 @@ class _UserAppbarState extends State<UserAppbar> {
                             width: 2,
                           ),
                         ),
-                        constraints: BoxConstraints(
-                          minWidth: 6,
-                          minHeight: 6,
-                        ),
+                        constraints: BoxConstraints(minWidth: 6, minHeight: 6),
                         child: Center(
                           child: Text(
                             unreadCount > 99 ? '99+' : '$unreadCount',
@@ -531,10 +522,12 @@ class _UserAppbarState extends State<UserAppbar> {
           ),
         IconButton(
           onPressed: () {
+            print(widget.type);
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => SettingScreen(roles: [?widget.type]),
+                builder: (context) =>
+                    SettingScreen(roles: [widget.type!], type: widget.type),
               ),
             );
           },

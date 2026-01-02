@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../constants/colorConstant/color_constant.dart';
 
@@ -21,9 +24,12 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   final _phoneController = TextEditingController();
   final _subjectController = TextEditingController();
   final _messageController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
 
   bool isLoading = false;
   bool isSuccess = false;
+  File? _proofDocument;
+  String? _documentName;
 
   // Validation constants
   static const int NAME_MIN_LENGTH = 2;
@@ -34,6 +40,7 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
   static const int SUBJECT_MAX_LENGTH = 100;
   static const int MESSAGE_MIN_LENGTH = 10;
   static const int MESSAGE_MAX_LENGTH = 1000;
+  static const int MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
   @override
   void dispose() {
@@ -61,12 +68,10 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       return 'Name must not exceed $NAME_MAX_LENGTH characters';
     }
 
-    // Check if name contains only letters, spaces, hyphens, and apostrophes
     if (!RegExp(r"^[a-zA-Z\s\-']+$").hasMatch(trimmedValue)) {
       return 'Name can only contain letters, spaces, hyphens, and apostrophes';
     }
 
-    // Check if name doesn't start or end with spaces
     if (value != trimmedValue) {
       return 'Name cannot start or end with spaces';
     }
@@ -81,19 +86,16 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
 
     final trimmedValue = value.trim();
 
-    // Comprehensive email validation
     if (!RegExp(
       r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
     ).hasMatch(trimmedValue)) {
       return 'Please enter a valid email address';
     }
 
-    // Check for consecutive dots
     if (trimmedValue.contains('..')) {
       return 'Email cannot contain consecutive dots';
     }
 
-    // Check email length
     if (trimmedValue.length > 254) {
       return 'Email address is too long';
     }
@@ -107,8 +109,6 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     }
 
     final trimmedValue = value.trim();
-
-    // Remove common separators for validation
     final digitsOnly = trimmedValue.replaceAll(RegExp(r'[\s\-\(\)\+]'), '');
 
     if (!RegExp(r'^[0-9]+$').hasMatch(digitsOnly)) {
@@ -141,7 +141,6 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       return 'Subject must not exceed $SUBJECT_MAX_LENGTH characters';
     }
 
-    // Check for suspicious patterns (all special characters)
     if (RegExp(r'^[^a-zA-Z0-9]+$').hasMatch(trimmedValue)) {
       return 'Subject must contain letters or numbers';
     }
@@ -164,12 +163,246 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       return 'Message must not exceed $MESSAGE_MAX_LENGTH characters';
     }
 
-    // Check if message contains at least some meaningful content
     if (RegExp(r'^[^a-zA-Z0-9]+$').hasMatch(trimmedValue)) {
       return 'Message must contain letters or numbers';
     }
 
     return null;
+  }
+
+  Future<void> _showDocumentPickerOptions() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20.w),
+        decoration: BoxDecoration(
+          color: ColorConstant.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20.r),
+            topRight: Radius.circular(20.r),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(height: 20.h),
+            Text(
+              'Add Proof Document',
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.bold,
+                color: ColorConstant.onSurface,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              'Choose how to upload your document',
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: ColorConstant.onSurface.withOpacity(0.6),
+              ),
+            ),
+            SizedBox(height: 24.h),
+            _buildPickerOption(
+              icon: Icons.camera_alt_outlined,
+              title: 'Take Photo',
+              subtitle: 'Use camera to capture document',
+              onTap: () {
+                Navigator.pop(context);
+                _pickImageFromCamera();
+              },
+            ),
+            SizedBox(height: 12.h),
+            _buildPickerOption(
+              icon: Icons.photo_library_outlined,
+              title: 'Choose from Gallery',
+              subtitle: 'Select an existing photo',
+              onTap: () {
+                Navigator.pop(context);
+                _pickImageFromGallery();
+              },
+            ),
+            SizedBox(height: 12.h),
+            _buildPickerOption(
+              icon: Icons.folder_outlined,
+              title: 'Browse Files',
+              subtitle: 'Select PDF or document file',
+              onTap: () {
+                Navigator.pop(context);
+                _pickDocument();
+              },
+            ),
+            SizedBox(height: 20.h),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPickerOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12.r),
+      child: Container(
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: ColorConstant.scaffoldGray,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: ColorConstant.moyoOrange.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: ColorConstant.moyoOrange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Icon(icon, color: ColorConstant.moyoOrange, size: 24.sp),
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                      color: ColorConstant.onSurface,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      color: ColorConstant.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16.sp,
+              color: ColorConstant.onSurface.withOpacity(0.3),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+
+      if (image != null) {
+        final file = File(image.path);
+        final fileSize = await file.length();
+
+        if (fileSize > MAX_FILE_SIZE) {
+          _showErrorSnackBar('File size must not exceed 5MB');
+          return;
+        }
+
+        setState(() {
+          _proofDocument = file;
+          _documentName = image.name;
+        });
+        _showSuccessSnackBar('Photo captured successfully');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to capture photo: $e');
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 1920,
+        maxHeight: 1920,
+      );
+
+      if (image != null) {
+        final file = File(image.path);
+        final fileSize = await file.length();
+
+        if (fileSize > MAX_FILE_SIZE) {
+          _showErrorSnackBar('File size must not exceed 5MB');
+          return;
+        }
+
+        setState(() {
+          _proofDocument = file;
+          _documentName = image.name;
+        });
+        _showSuccessSnackBar('Image selected successfully');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to select image: $e');
+    }
+  }
+
+  Future<void> _pickDocument() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final fileSize = await file.length();
+
+        if (fileSize > MAX_FILE_SIZE) {
+          _showErrorSnackBar('File size must not exceed 5MB');
+          return;
+        }
+
+        setState(() {
+          _proofDocument = file;
+          _documentName = result.files.single.name;
+        });
+        _showSuccessSnackBar('Document selected successfully');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to select document: $e');
+    }
+  }
+
+  void _removeDocument() {
+    setState(() {
+      _proofDocument = null;
+      _documentName = null;
+    });
+    _showSuccessSnackBar('Document removed');
   }
 
   Future<void> _submitForm() async {
@@ -184,29 +417,37 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     });
 
     try {
-      final response = await http.post(
+      var request = http.MultipartRequest(
+        'POST',
         Uri.parse('$base_url/api/contact'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'name': _nameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'phone': _phoneController.text.trim(),
-          'subject': _subjectController.text.trim(),
-          'message': _messageController.text.trim(),
-        }),
       );
+
+      // Add text fields
+      request.fields['name'] = _nameController.text.trim();
+      request.fields['email'] = _emailController.text.trim();
+      request.fields['phone'] = _phoneController.text.trim();
+      request.fields['subject'] = _subjectController.text.trim();
+      request.fields['message'] = _messageController.text.trim();
+
+      // Add proof document if selected
+      if (_proofDocument != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'proofDocument',
+            _proofDocument!.path,
+          ),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
       setState(() {
         isLoading = false;
       });
 
-
       print(response.body);
-      print(_nameController.text.trim());
-      print(_emailController.text.trim());
-      print(_phoneController.text.trim());
-      print(_subjectController.text.trim());
-      print(_messageController.text.trim());
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
@@ -216,10 +457,11 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
           _showSuccessDialog(data['message'] ?? 'Message sent successfully!');
           _clearForm();
         } else {
-          _showErrorDialog(data['message'] ?? 'Failed to send message. Please try again.');
+          _showErrorDialog(
+            data['message'] ?? 'Failed to send message. Please try again.',
+          );
         }
       } else if (response.statusCode == 422) {
-        // Validation error from server
         final data = json.decode(response.body);
         _showErrorDialog(data['message'] ?? 'Invalid data submitted.');
       } else if (response.statusCode >= 500) {
@@ -231,7 +473,9 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
       setState(() {
         isLoading = false;
       });
-      _showErrorDialog('Network error. Please check your connection and try again.');
+      _showErrorDialog(
+        'Network error. Please check your connection and try again.',
+      );
     }
   }
 
@@ -241,7 +485,26 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
     _phoneController.clear();
     _subjectController.clear();
     _messageController.clear();
+    setState(() {
+      _proofDocument = null;
+      _documentName = null;
+    });
     _formKey.currentState?.reset();
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: ColorConstant.moyoGreen,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(16.w),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   void _showErrorSnackBar(String message) {
@@ -651,6 +914,8 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
               ],
               counterText: true,
             ),
+            SizedBox(height: 16.h),
+            _buildDocumentUploadSection(),
             SizedBox(height: 32.h),
             SizedBox(
               width: double.infinity,
@@ -665,39 +930,190 @@ class _ContactFormScreenState extends State<ContactFormScreen> {
                   ),
                   elevation: 0,
                   shadowColor: ColorConstant.moyoOrange.withOpacity(0.3),
-                  disabledBackgroundColor: ColorConstant.moyoOrange.withOpacity(0.5),
+                  disabledBackgroundColor: ColorConstant.moyoOrange.withOpacity(
+                    0.5,
+                  ),
                 ),
                 child: isLoading
                     ? SizedBox(
-                  height: 20.h,
-                  width: 20.w,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      ColorConstant.white,
-                    ),
-                  ),
-                )
+                        height: 20.h,
+                        width: 20.w,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            ColorConstant.white,
+                          ),
+                        ),
+                      )
                     : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Send Message',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Send Message',
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Icon(Icons.send_rounded, size: 20.sp),
+                        ],
                       ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Icon(Icons.send_rounded, size: 20.sp),
-                  ],
-                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildDocumentUploadSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Proof Document (Optional)',
+          style: TextStyle(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+            color: ColorConstant.onSurface,
+          ),
+        ),
+        SizedBox(height: 8.h),
+        if (_proofDocument == null)
+          InkWell(
+            onTap: _showDocumentPickerOptions,
+            borderRadius: BorderRadius.circular(12.r),
+            child: Container(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: ColorConstant.scaffoldGray,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(
+                  color: ColorConstant.moyoOrange.withOpacity(0.3),
+                  width: 1.5,
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.cloud_upload_outlined,
+                    size: 48.sp,
+                    color: ColorConstant.moyoOrange,
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    'Upload Document or Take Photo',
+                    style: TextStyle(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w600,
+                      color: ColorConstant.onSurface,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    'PDF, DOC, DOCX, JPG, PNG (Max 5MB)',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: ColorConstant.onSurface.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: ColorConstant.moyoOrange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: ColorConstant.moyoOrange.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: ColorConstant.moyoOrange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Icon(
+                    _getFileIcon(_documentName ?? ''),
+                    color: ColorConstant.moyoOrange,
+                    size: 24.sp,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _documentName ?? 'Document',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: ColorConstant.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 2.h),
+                      FutureBuilder<int>(
+                        future: _proofDocument!.length(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            final sizeInKB = snapshot.data! / 1024;
+                            final sizeText = sizeInKB > 1024
+                                ? '${(sizeInKB / 1024).toStringAsFixed(2)} MB'
+                                : '${sizeInKB.toStringAsFixed(2)} KB';
+                            return Text(
+                              sizeText,
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: ColorConstant.onSurface.withOpacity(0.6),
+                              ),
+                            );
+                          }
+                          return SizedBox.shrink();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: _removeDocument,
+                  icon: Icon(Icons.close, color: Colors.red, size: 20.sp),
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  IconData _getFileIcon(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'doc':
+      case 'docx':
+        return Icons.description;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return Icons.image;
+      default:
+        return Icons.insert_drive_file;
+    }
   }
 
   Widget _buildTextField({
