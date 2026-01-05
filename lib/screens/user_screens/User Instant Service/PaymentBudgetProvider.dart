@@ -1,3 +1,4 @@
+import 'package:first_flutter/baseControllers/APis.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -17,6 +18,10 @@ class PaymentBudgetProvider extends ChangeNotifier {
   Function(Map<String, dynamic>)? _onPaymentSuccess;
   Function(String)? _onPaymentError;
 
+  // Store payment context for verification
+  String? _currentServiceId;
+  String? _currentPaymentType;
+
   PaymentBudgetModel? get paymentBudget => _paymentBudget;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -32,26 +37,146 @@ class PaymentBudgetProvider extends ChangeNotifier {
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    debugPrint('✅ Payment Success: ${response.paymentId}');
-    Fluttertoast.showToast(
-      msg: "Payment Successful!",
-      toastLength: Toast.LENGTH_SHORT,
-      backgroundColor: Colors.green,
-    );
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    debugPrint('✅ Payment Success!');
+    debugPrint('═══════════════════════════════════════');
+    debugPrint('Payment ID: ${response.paymentId}');
+    debugPrint('Order ID: ${response.orderId}');
+    debugPrint('Signature: ${response.signature}');
+    debugPrint('═══════════════════════════════════════');
 
-    if (_onPaymentSuccess != null) {
-      _onPaymentSuccess!({
+    // Verify payment with backend
+    if (response.paymentId != null && _currentServiceId != null) {
+      await _verifyPaymentWithBackend(
+        paymentId: response.paymentId!,
+        serviceId: _currentServiceId!,
+        paymentType: _currentPaymentType ?? 'full',
+      );
+    } else {
+      // Create response data map
+      final responseData = {
         'payment_id': response.paymentId,
         'order_id': response.orderId,
         'signature': response.signature,
         'status': 'success',
-      });
+      };
+
+      Fluttertoast.showToast(
+        msg: "Payment Successful!",
+        toastLength: Toast.LENGTH_SHORT,
+        backgroundColor: Colors.green,
+      );
+
+      if (_onPaymentSuccess != null) {
+        _onPaymentSuccess!(responseData);
+      }
+    }
+  }
+
+  /// Verify payment with backend API
+  Future<void> _verifyPaymentWithBackend({
+    required String paymentId,
+    required String serviceId,
+    required String paymentType,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final authToken = prefs.getString('auth_token');
+      final userId = prefs.getInt('user_id');
+
+      if (authToken == null || authToken.isEmpty) {
+        throw Exception('Authentication token not found');
+      }
+
+      debugPrint('🔄 Verifying payment with backend...');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('Payment ID: $paymentId');
+      debugPrint('Service ID: $serviceId');
+      debugPrint('User ID: $userId');
+      debugPrint('Payment Type: $paymentType');
+      debugPrint('═══════════════════════════════════════');
+
+      final response = await http.put(
+        Uri.parse('$base_url/bid/api/razorpay/transactions/$paymentId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: json.encode({
+          'user_id': userId,
+          'payment_method': 'razorpay',
+          'payment_type': paymentType,
+          'service_id': serviceId,
+          'status': 'captured',
+        }),
+      );
+
+      debugPrint('📊 Payment Verification Response:');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      debugPrint('═══════════════════════════════════════');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          debugPrint('✅ Payment verified successfully!');
+
+          Fluttertoast.showToast(
+            msg: "Payment Successful & Verified!",
+            toastLength: Toast.LENGTH_SHORT,
+            backgroundColor: Colors.green,
+          );
+
+          // Create response data for success callback
+          final responseData = {
+            'payment_id': data['payment_id'] ?? paymentId,
+            'order_id': null,
+            'signature': null,
+            'status': 'success',
+            'verified': true,
+            'message': data['message'],
+          };
+
+          if (_onPaymentSuccess != null) {
+            _onPaymentSuccess!(responseData);
+          }
+        } else {
+          throw Exception(data['message'] ?? 'Payment verification failed');
+        }
+      } else {
+        throw Exception('Failed to verify payment: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error verifying payment: $e');
+
+      Fluttertoast.showToast(
+        msg: "Payment verification failed: $e",
+        toastLength: Toast.LENGTH_LONG,
+        backgroundColor: Colors.orange,
+      );
+
+      // Still call success callback with unverified status
+      if (_onPaymentSuccess != null) {
+        _onPaymentSuccess!({
+          'payment_id': paymentId,
+          'order_id': null,
+          'signature': null,
+          'status': 'success',
+          'verified': false,
+          'error': e.toString(),
+        });
+      }
     }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
-    debugPrint('❌ Payment Error: ${response.code} - ${response.message}');
+    debugPrint('❌ Payment Error!');
+    debugPrint('═══════════════════════════════════════');
+    debugPrint('Error Code: ${response.code}');
+    debugPrint('Error Message: ${response.message}');
+    debugPrint('═══════════════════════════════════════');
+
     Fluttertoast.showToast(
       msg: "Payment Failed: ${response.message}",
       toastLength: Toast.LENGTH_LONG,
@@ -64,7 +189,11 @@ class PaymentBudgetProvider extends ChangeNotifier {
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    debugPrint('🔄 External Wallet: ${response.walletName}');
+    debugPrint('🔄 External Wallet Selected');
+    debugPrint('═══════════════════════════════════════');
+    debugPrint('Wallet Name: ${response.walletName}');
+    debugPrint('═══════════════════════════════════════');
+
     Fluttertoast.showToast(
       msg: "External Wallet: ${response.walletName}",
       toastLength: Toast.LENGTH_SHORT,
@@ -85,24 +214,31 @@ class PaymentBudgetProvider extends ChangeNotifier {
       }
 
       final response = await http.post(
-        Uri.parse('https://api.moyointernational.com/bid/api/service/$serviceId/payment-budget'),
+        Uri.parse('$base_url/bid/api/service/$serviceId/payment-budget'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
         },
-        body: json.encode({
-          'total_amount': totalAmount,
-        }),
+        body: json.encode({'total_amount': totalAmount}),
       );
+
+      debugPrint('📊 Payment Budget Response:');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         _paymentBudget = PaymentBudgetModel.fromJson(data);
         _error = null;
+
+        debugPrint('✅ Payment Budget Loaded Successfully');
       } else {
-        throw Exception('Failed to load payment budget: ${response.statusCode}');
+        throw Exception(
+          'Failed to load payment budget: ${response.statusCode}',
+        );
       }
     } catch (e) {
+      debugPrint('❌ Error fetching payment budget: $e');
       _error = e.toString();
       _paymentBudget = null;
     } finally {
@@ -110,8 +246,6 @@ class PaymentBudgetProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-
 
   /// Open Razorpay checkout
   Future<void> openCheckout({
@@ -126,33 +260,42 @@ class PaymentBudgetProvider extends ChangeNotifier {
   }) async {
     _onPaymentSuccess = onSuccess;
     _onPaymentError = onError;
+    _currentServiceId = serviceId;
+    _currentPaymentType = paymentType;
+
+    final prefs = await SharedPreferences.getInstance();
+    final user_id = prefs.getInt('user_id');
 
     try {
-      // Create order from backend
-
-
-
-
       // Razorpay options
       var options = {
         'key': 'rzp_test_RsAimuNuiOFzpH',
-        'amount': (amount * 100).toInt(), // Amount in paise
+        'amount': (amount * 100).toInt(),
         'name': 'Moyo International',
         'description': 'Service Payment - $paymentType',
         'timeout': 300, // 5 minutes
-        'prefill': {
-          'contact': userPhone,
-          'email': userEmail,
-          'name': userName,
-        },
-        'theme': {
-          'color': '#FF6B35', // Your brand color
-        },
+        'prefill': {'name': userName, 'email': userEmail, 'contact': userPhone},
         'notes': {
+          'user_id': user_id?.toString() ?? '',
           'service_id': serviceId,
           'payment_type': paymentType,
         },
+        'theme': {'color': '#FF6B35'},
       };
+
+      // Print payment initiation data
+      debugPrint('💳 Initiating Razorpay Payment');
+      debugPrint('═══════════════════════════════════════');
+      debugPrint('Service ID: $serviceId');
+      debugPrint('Amount: ₹$amount');
+      debugPrint('Payment Type: $paymentType');
+      debugPrint('User ID: $user_id');
+      debugPrint('User: $userName');
+      debugPrint('Email: $userEmail');
+      debugPrint('Phone: $userPhone');
+      debugPrint('Razorpay Options:');
+      debugPrint(json.encode(options));
+      debugPrint('═══════════════════════════════════════');
 
       _razorpay.open(options);
     } catch (e) {
@@ -165,6 +308,8 @@ class PaymentBudgetProvider extends ChangeNotifier {
     _paymentBudget = null;
     _error = null;
     _isLoading = false;
+    _currentServiceId = null;
+    _currentPaymentType = null;
     notifyListeners();
   }
 

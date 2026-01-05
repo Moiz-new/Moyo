@@ -29,8 +29,11 @@ class NatsService {
 
   // Connection status stream
   final _connectionController = StreamController<bool>.broadcast();
+
   Stream<bool> get connectionStream => _connectionController.stream;
+
   bool get isConnected => _isConnected;
+
   bool get isInitialized => _isInitialized;
 
   // Store subscriptions for re-subscription after reconnect
@@ -146,7 +149,9 @@ class NatsService {
     _reconnectTimer?.cancel();
     _reconnectAttempts++;
 
-    debugPrint('🔄 Scheduling reconnect attempt $_reconnectAttempts in ${_reconnectInterval.inSeconds}s');
+    debugPrint(
+      '🔄 Scheduling reconnect attempt $_reconnectAttempts in ${_reconnectInterval.inSeconds}s',
+    );
 
     _reconnectTimer = Timer(_reconnectInterval, () async {
       debugPrint('🔄 Attempting to reconnect...');
@@ -218,7 +223,7 @@ class NatsService {
       final sub = _client!.sub(subject);
 
       sub.stream.listen(
-            (message) {
+        (message) {
           final messageStr = _bytesToString(message.data);
           debugPrint('📥 Received on "$subject": $messageStr');
           onMessage(messageStr);
@@ -264,7 +269,7 @@ class NatsService {
       final sub = _client!.sub(subject);
 
       sub.stream.listen(
-            (message) {
+        (message) {
           debugPrint('📥 Received bytes on "$subject"');
           onMessage(message.data);
         },
@@ -283,10 +288,10 @@ class NatsService {
 
   /// Request-Reply pattern (synchronous communication)
   Future<String?> request(
-      String subject,
-      String request, {
-        Duration timeout = const Duration(seconds: 10),
-      }) async {
+    String subject,
+    String request, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
     if (!_isConnected || _client == null) {
       debugPrint('❌ Not connected to NATS');
       return null;
@@ -311,10 +316,10 @@ class NatsService {
 
   /// Request-Reply pattern with bytes
   Future<Uint8List?> requestBytes(
-      String subject,
-      Uint8List request, {
-        Duration timeout = const Duration(seconds: 5),
-      }) async {
+    String subject,
+    Uint8List request, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     if (!_isConnected || _client == null) {
       debugPrint('❌ Not connected to NATS');
       return null;
@@ -370,9 +375,9 @@ class NatsService {
 
   /// Reply handler with bytes
   Subscription? replyHandlerBytes(
-      String subject,
-      Uint8List Function(Uint8List?) handler,
-      ) {
+    String subject,
+    Uint8List Function(Uint8List?) handler,
+  ) {
     if (!_isConnected || _client == null) {
       debugPrint('❌ Not connected to NATS');
       return null;

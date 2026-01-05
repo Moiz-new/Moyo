@@ -98,7 +98,7 @@ class UserInterestedProviderListCard extends StatelessWidget {
                 age: age,
                 distance: distance,
                 reachTime: reachTime,
-                bidStatus: bidStatus, // Pass bid status
+                bidStatus: bidStatus,
               ),
               _categorySubCategory(
                 context,
@@ -133,7 +133,7 @@ class UserInterestedProviderListCard extends StatelessWidget {
     String? age,
     String? distance,
     String? reachTime,
-    String? bidStatus, // Add bid status parameter
+    String? bidStatus,
   }) {
     return Container(
       height: 44.h,
@@ -434,9 +434,9 @@ class UserInterestedProviderListCard extends StatelessWidget {
                   imageUrl: dp ?? "https://picsum.photos/200/200",
                   fit: BoxFit.cover,
                   placeholder: (context, url) =>
-                      Image.asset('assets//images/moyo_image_placeholder.png'),
+                      Image.asset('assets/images/moyo_image_placeholder.png'),
                   errorWidget: (context, url, error) =>
-                      Image.asset('assets//images/moyo_image_placeholder.png'),
+                      Image.asset('assets/images/moyo_image_placeholder.png'),
                 ),
               ],
             ),

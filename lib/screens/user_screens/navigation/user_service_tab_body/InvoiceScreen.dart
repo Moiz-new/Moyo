@@ -194,7 +194,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         widget.service.customer.email!,
                         style: pw.TextStyle(fontSize: 12),
                       ),
-
                   ],
                 ),
                 pw.Container(
@@ -312,10 +311,8 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
             ),
             pw.SizedBox(height: 15),
 
-            _buildPdfAmountRow('Service Amount', finalAmount),
-            _buildPdfAmountRow('Tax (18% GST)', taxAmount),
             pw.Divider(color: PdfColors.grey400),
-            _buildPdfAmountRow('Total Amount', totalAmount, isTotal: true),
+            _buildPdfAmountRow('Total Amount', finalAmount, isTotal: true),
 
             pw.SizedBox(height: 15),
 
@@ -698,7 +695,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                                     color: Colors.grey[700],
                                   ),
                                 ),
-
                             ],
                           ),
                         ),
@@ -868,21 +864,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
                         letterSpacing: 1.0,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildAmountRow(
-                      'Service Amount',
-                      finalAmount,
-                      isSubtotal: true,
-                    ),
-                    _buildAmountRow(
-                      'Tax (18% GST)',
-                      taxAmount,
-                      isSubtotal: true,
-                    ),
-                    const SizedBox(height: 8),
+
                     Divider(color: Colors.grey[300]),
                     const SizedBox(height: 8),
-                    _buildAmountRow('Total Amount', totalAmount, isTotal: true),
+                    _buildAmountRow('Total Amount', finalAmount, isTotal: true),
                     const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(12),

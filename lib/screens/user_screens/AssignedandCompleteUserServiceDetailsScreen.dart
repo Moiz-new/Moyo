@@ -12,10 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' show cos, sqrt, asin;
 import 'package:dart_nats/dart_nats.dart';
 import '../../NATS Service/NatsService.dart';
-import '../../widgets/user_interested_provider_list_card.dart';
 import '../provider_screens/navigation/ServiceTimerScreen.dart';
 import 'navigation/RazorpayProvider.dart';
-import 'navigation/user_service_tab_body/ServiceModel.dart';
 import 'navigation/user_service_tab_body/ServiceProvider.dart';
 import 'BookProviderProvider.dart';
 
@@ -636,7 +634,7 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                                     _serviceData?['duration_unit'] != null
                                 ? '${_serviceData!['duration_value']} ${_serviceData!['duration_unit']}'
                                 : 'N/A',
-                            price: _serviceData?['budget']?.toString() ?? 'N/A',
+                            price: _serviceData?['final_amount']?.toString() ?? 'N/A',
                             address: _serviceData?['location'] ?? 'N/A',
                             particular: _extractParticulars(
                               dynamicFields,
@@ -672,8 +670,9 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                           ),
 
                           if (_locationData != null &&
-                              (_serviceData?['status'] ?? '') !=
-                                  "completed") ...[
+                              (_serviceData?['status'] ?? '') != "completed" &&
+                              (_serviceData?['status'] ?? '') != "cancelled" &&
+                              (_serviceData?['status'] ?? '') != "in_progress") ...[
                             const SizedBox(height: 16),
                             Padding(
                               padding: const EdgeInsets.symmetric(

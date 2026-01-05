@@ -48,10 +48,11 @@ class _UserOngoingServiceState extends State<UserOngoingService> {
     return 'N/A';
   }
 
-  String _getPriceBy(ServiceModel service) {
+  String? _getPriceBy(ServiceModel service) {
     // Return bid amount if available, otherwise return budget
     if (service.bids.isNotEmpty) {
-      return service.bids.first.amount.toStringAsFixed(0);
+      print(service.finalAmount);
+      return service.finalAmount;
     }
     return service.budget;
   }

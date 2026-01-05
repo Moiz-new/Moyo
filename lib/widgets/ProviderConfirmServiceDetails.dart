@@ -1052,7 +1052,7 @@ class ProviderConfirmServiceDetails extends StatelessWidget {
             ),
 
             // Accept/ReBid buttons - show for 'open' and 'pending' if provider
-            if ((statusLower == "open" || statusLower == "pending") &&
+            if ((statusLower == "open" ) &&
                 isProvider)
               _acceptReBid(context),
 

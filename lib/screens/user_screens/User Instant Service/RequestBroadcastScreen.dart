@@ -90,14 +90,13 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
 
     _initializeAnimations();
 
-    // ADD THIS CHECK: If master timer is at 180, close immediately
     if (_masterTimerSeconds == 180) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_isScreenClosed) {
           _closeScreen();
         }
       });
-      return; // Don't initialize timers or fetch providers
+      return;
     }
 
     _initializeTimers();
@@ -442,7 +441,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
         ),
       ).then((paymentResult) {
         if (paymentResult != null && paymentResult['status'] == 'success') {
-          // Payment successful, proceed with booking
           _confirmBookingAfterPayment(bid, dialogContext, paymentResult);
         }
       });
@@ -557,7 +555,6 @@ class _RequestBroadcastScreenState extends State<RequestBroadcastScreen>
     );
   }
 
-  // Add this new helper method to handle booking after payment
   void _confirmBookingAfterPayment(
     AcceptedBid bid,
     BuildContext dialogContext,
@@ -1212,7 +1209,7 @@ class ServiceData {
   final String serviceMode;
   final int? durationValue;
   final String? durationUnit;
-  final int serviceDays; // ✅ ADDED
+  final int serviceDays;
   final DateTime? startDate;
   final DateTime? endDate;
   final String status;
@@ -1238,7 +1235,7 @@ class ServiceData {
     required this.serviceMode,
     this.durationValue,
     this.durationUnit,
-    required this.serviceDays, // ✅ ADDED
+    required this.serviceDays,
     this.startDate,
     this.endDate,
     required this.status,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:first_flutter/screens/provider_screens/confirm_provider_service_details_screen.dart';
 import 'package:first_flutter/screens/provider_screens/navigation/ProviderChats/ProviderChatScreen.dart';
 import 'package:first_flutter/screens/provider_screens/navigation/ProviderRatingScreen.dart';
 import 'package:first_flutter/screens/provider_screens/provider_service_details_screen.dart';
@@ -184,28 +185,8 @@ class NotificationService {
   }
 
   // Handle Background Message Taps (App in Background)
-  static void _setupBackgroundMessageHandler() {
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print("=== 🔔 App Opened from BACKGROUND ===");
-      print("Title: ${message.notification?.title}");
-      print("Data: ${message.data}");
-      _handleNotificationTap(jsonEncode(message.data));
-    });
-  }
 
   // Check if App Opened from Terminated State
-  static Future<void> _checkInitialMessage() async {
-    RemoteMessage? initialMessage = await _firebaseMessaging
-        .getInitialMessage();
-    if (initialMessage != null) {
-      print("=== 🔔 App Opened from TERMINATED State ===");
-      print("Title: ${initialMessage.notification?.title}");
-      // Delay navigation to ensure app is fully initialized
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _handleNotificationTap(jsonEncode(initialMessage.data));
-      });
-    }
-  }
 
   // Show Local Notification with Conditional Custom Sound (Instance method)
   static Future<void> _showLocalNotification(RemoteMessage message) async {
@@ -347,7 +328,9 @@ class NotificationService {
   }
 
   // 🔥 UPDATED: Handle Notification Tap with Chat Message Support
-  // 🔥 UPDATED: Handle Notification Tap with Chat Message and Rating Support
+  // 🔥 UPDATED: Handle Notification Tap with Chat Message, Rating, and Service Confirmed Support
+  // ================== FIX 1: Add Safety Check ==================
+  // ================== FINAL FIX: Remove Nested Delays ==================
   static void _handleNotificationTap(String? payload) {
     if (payload == null || payload.isEmpty) {
       print("⚠️ Empty payload received");
@@ -360,107 +343,156 @@ class NotificationService {
       final Map<String, dynamic> data = jsonDecode(payload);
       print("📦 Parsed data: $data");
 
-      // 🆕 CHECK FOR RATING NOTIFICATION
-      if (data.containsKey("type") && data["type"] == "new_rating") {
-        print("⭐ New Rating notification detected!");
+      // 🔥 REMOVED: Extra delay - context should be ready by now
+      final context = navigatorKey.currentContext;
 
-        // Extract rating data
-        String serviceId = data["service_id"]?.toString() ?? "";
-        String ratingId = data["rating_id"]?.toString() ?? "";
-        String userId = data["user_id"]?.toString() ?? "";
-
-        print("📍 Navigating to ProviderRatingScreen");
-        print("   Service ID: $serviceId");
-        print("   Rating ID: $ratingId");
-        print("   User ID: $userId");
-
-        final context = navigatorKey.currentContext;
-
-        if (context != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ProviderRatingScreen()),
-          );
-        } else {
-          print("❌ Navigator context not available");
-        }
+      if (context == null) {
+        print("❌ Context not available - scheduling retry");
+        // Retry once if context not ready
+        Future.delayed(const Duration(milliseconds: 500), () {
+          final retryContext = navigatorKey.currentContext;
+          if (retryContext != null) {
+            _performNavigation(retryContext, data);
+          } else {
+            print("❌ Context still not available after retry");
+          }
+        });
         return;
       }
 
-      // 🆕 CHECK FOR CHAT MESSAGE NOTIFICATION
-      if (data.containsKey("type") &&
-          data["type"] == "chat_message" &&
-          data.containsKey("sender_type") &&
-          data["sender_type"] == "user") {
-        print("💬 Chat message from USER detected!");
+      _performNavigation(context, data);
+    } catch (e) {
+      print("❌ Error parsing payload: $e");
+    }
+  }
 
-        // Extract chat data
-        String userName = data["send_name"]?.toString() ?? "User";
-        String userImage = data["image_url"]?.toString() ?? "";
-        String userId = data["sender_id"]?.toString() ?? "";
-        String serviceId = data["service_id"]?.toString() ?? "";
-        String chatId = data["chat_id"]?.toString() ?? "";
-        String userPhone = ""; // Not in payload, can be fetched later if needed
+  // ================== Navigation Logic (UNCHANGED but with better logging) ==================
+  static void _performNavigation(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    print("🚀 Starting navigation with data: $data");
 
-        print("📍 Navigating to ProviderChatScreen");
-        print("   User: $userName (ID: $userId)");
-        print("   Service ID: $serviceId");
-        print("   Chat ID: $chatId");
+    // Service Confirmed
+    if (data.containsKey("type") &&
+        data["type"] == "service_update" &&
+        data.containsKey("title") &&
+        data["title"] == "Service Confirmed") {
+      String serviceId = data["serviceId"]?.toString() ?? "";
+      print(
+        "📍 [SERVICE CONFIRMED] Navigating to ConfirmProviderServiceDetailsScreen",
+      );
+      print("   Service ID: $serviceId");
 
-        final context = navigatorKey.currentContext;
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (context) =>
+                  ConfirmProviderServiceDetailsScreen(serviceId: serviceId),
+            ),
+          )
+          .then((_) => print("✅ Navigation to Service Confirmed complete"));
+      return;
+    }
 
-        if (context != null) {
-          Navigator.push(
-            context,
+    // Rating Notification
+    if (data.containsKey("type") && data["type"] == "new_rating") {
+      print("📍 [RATING] Navigating to ProviderRatingScreen");
+
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (context) => ProviderRatingScreen()))
+          .then((_) => print("✅ Navigation to Rating complete"));
+      return;
+    }
+
+    // Chat Message
+    if (data.containsKey("type") &&
+        data["type"] == "chat_message" &&
+        data.containsKey("sender_type") &&
+        data["sender_type"] == "user") {
+      String userName = data["send_name"]?.toString() ?? "User";
+      String userImage = data["image_url"]?.toString() ?? "";
+      String userId = data["sender_id"]?.toString() ?? "";
+      String serviceId = data["service_id"]?.toString() ?? "";
+
+      print("📍 [CHAT] Navigating to ProviderChatScreen");
+      print("   User: $userName");
+      print("   Service ID: $serviceId");
+
+      Navigator.of(context)
+          .push(
             MaterialPageRoute(
               builder: (context) => ProviderChatScreen(
                 userName: userName,
                 userImage: userImage.isNotEmpty ? userImage : null,
                 userId: userId,
                 isOnline: true,
-                // You can add online status to notification payload if needed
-                userPhone: userPhone.isNotEmpty ? userPhone : null,
+                userPhone: null,
                 serviceId: serviceId,
                 providerId: userId,
               ),
             ),
-          );
-        } else {
-          print("❌ Navigator context not available");
-        }
-        return;
-      }
+          )
+          .then((_) => print("✅ Navigation to Chat complete"));
+      return;
+    }
 
-      // EXISTING LOGIC: Service-based notifications
-      if (data.containsKey("serviceId") && data.containsKey("role")) {
-        String serviceId = data["serviceId"].toString();
-        String role = data["role"].toString();
+    // Service-based notifications
+    if (data.containsKey("serviceId") && data.containsKey("role")) {
+      String serviceId = data["serviceId"].toString();
+      String role = data["role"].toString();
 
-        print("📍 Role: $role, ServiceId: $serviceId");
+      print("📍 [SERVICE] Role: $role, Service ID: $serviceId");
 
-        final context = navigatorKey.currentContext;
-
-        if (context != null) {
-          if (role == "user") {
-            _navigateToUserServiceFromNotification(context, serviceId);
-          } else if (role == "provider") {
-            Navigator.push(
-              context,
+      if (role == "user") {
+        _navigateToUserServiceFromNotification(context, serviceId);
+      } else if (role == "provider") {
+        Navigator.of(context)
+            .push(
               MaterialPageRoute(
                 builder: (context) =>
                     ProviderServiceDetailsScreen(serviceId: serviceId),
               ),
-            );
-          }
-        } else {
-          print("❌ Navigator context not available");
-        }
+            )
+            .then((_) => print("✅ Navigation to Provider Service complete"));
       }
-    } catch (e) {
-      print("❌ Error parsing payload: $e");
+      return;
+    }
+
+    print("⚠️ No matching navigation case found for data: $data");
+  }
+
+  // ================== Background Handler (Keep delay here only) ==================
+  static void _setupBackgroundMessageHandler() {
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print("=== 🔔 App Opened from BACKGROUND ===");
+      print("Title: ${message.notification?.title}");
+      print("Data: ${message.data}");
+
+      // Keep delay ONLY here for background case
+      Future.delayed(const Duration(milliseconds: 600), () {
+        _handleNotificationTap(jsonEncode(message.data));
+      });
+    });
+  }
+
+  // ================== Initial Message (Keep delay here only) ==================
+  static Future<void> _checkInitialMessage() async {
+    RemoteMessage? initialMessage = await _firebaseMessaging
+        .getInitialMessage();
+    if (initialMessage != null) {
+      print("=== 🔔 App Opened from TERMINATED State ===");
+      print("Title: ${initialMessage.notification?.title}");
+      print("Data: ${initialMessage.data}");
+
+      // Keep delay ONLY here for terminated case
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        _handleNotificationTap(jsonEncode(initialMessage.data));
+      });
     }
   }
 
+  // ================== FIX 2: Separate Navigation Logic ==================
   // Navigation methods (UNCHANGED)
   static Future<void> _navigateToUserServiceFromNotification(
     BuildContext context,

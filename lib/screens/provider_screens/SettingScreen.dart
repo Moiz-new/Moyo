@@ -174,10 +174,10 @@ class _SettingScreenState extends State<SettingScreen>
   }
 
   void _showPermissionDialog(
-      String title,
-      String message,
-      String permissionType,
-      ) {
+    String title,
+    String message,
+    String permissionType,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -302,7 +302,7 @@ class _SettingScreenState extends State<SettingScreen>
         shareMessage += 'Use my referral code: $referralCode\n\n';
       }
       shareMessage +=
-      'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
+          'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
 
       // Load the image from assets as bytes
       final ByteData bytes = await rootBundle.load(
@@ -337,7 +337,7 @@ class _SettingScreenState extends State<SettingScreen>
           shareMessage += 'Use my referral code: $referralCode\n\n';
         }
         shareMessage +=
-        'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
+            'Download now: https://play.google.com/store/apps/details?id=com.acore.moyo&pcampaignid=web_share';
 
         await Share.share(shareMessage, subject: 'Check out this app!');
         _showSnackBar('App shared!');
@@ -449,7 +449,7 @@ class _SettingScreenState extends State<SettingScreen>
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Notifications',
@@ -490,7 +490,7 @@ class _SettingScreenState extends State<SettingScreen>
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Location Services',
@@ -528,7 +528,6 @@ class _SettingScreenState extends State<SettingScreen>
 
                         SizedBox(height: 24.h),
 
-
                         if (widget.type?.toLowerCase() != 'user') ...[
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -557,7 +556,7 @@ class _SettingScreenState extends State<SettingScreen>
                                   children: [
                                     Row(
                                       mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           'Maximum Search Distance',
@@ -604,7 +603,7 @@ class _SettingScreenState extends State<SettingScreen>
                                     SliderTheme(
                                       data: SliderThemeData(
                                         activeTrackColor:
-                                        ColorConstant.moyoOrange,
+                                            ColorConstant.moyoOrange,
                                         inactiveTrackColor: ColorConstant
                                             .moyoOrange
                                             .withOpacity(0.3),
@@ -617,7 +616,8 @@ class _SettingScreenState extends State<SettingScreen>
                                         ),
                                       ),
                                       child: Slider(
-                                        value: settingsProvider.maxSearchDistance
+                                        value: settingsProvider
+                                            .maxSearchDistance
                                             .toDouble(),
                                         min: 1.0,
                                         max: 50.0,
@@ -697,7 +697,7 @@ class _SettingScreenState extends State<SettingScreen>
                                       content: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text('Version: $appVersion'),
                                           SizedBox(height: 8.h),
@@ -720,7 +720,7 @@ class _SettingScreenState extends State<SettingScreen>
                                   padding: EdgeInsets.symmetric(vertical: 12.h),
                                   child: Row(
                                     mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'App Version',

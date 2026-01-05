@@ -290,7 +290,11 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
                   icon: Icons.payments,
                   recommended: false,
                   discount: budget.payments.fullPayment < budget.totalAmount
-                      ? ((1 - budget.payments.fullPayment / budget.totalAmount) * 100).toInt()
+                      ? ((1 -
+                                    budget.payments.fullPayment /
+                                        budget.totalAmount) *
+                                100)
+                            .toInt()
                       : null,
                 ),
 
@@ -336,10 +340,11 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),
                   child: ElevatedButton(
-                    onPressed: (selectedPaymentType != null && !_isProcessingPayment)
+                    onPressed:
+                        (selectedPaymentType != null && !_isProcessingPayment)
                         ? () {
-                      _handlePaymentProceed(budget);
-                    }
+                            _handlePaymentProceed(budget);
+                          }
                         : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: ColorConstant.moyoOrange,
@@ -352,32 +357,32 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
                     ),
                     child: _isProcessingPayment
                         ? SizedBox(
-                      height: 20.h,
-                      width: 20.w,
-                      child: CircularProgressIndicator(
-                        color: ColorConstant.white,
-                        strokeWidth: 2,
-                      ),
-                    )
+                            height: 20.h,
+                            width: 20.w,
+                            child: CircularProgressIndicator(
+                              color: ColorConstant.white,
+                              strokeWidth: 2,
+                            ),
+                          )
                         : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.lock,
-                          color: ColorConstant.white,
-                          size: 20.sp,
-                        ),
-                        SizedBox(width: 8.w),
-                        Text(
-                          'Proceed to Payment',
-                          style: GoogleFonts.roboto(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
-                            color: ColorConstant.white,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.lock,
+                                color: ColorConstant.white,
+                                size: 20.sp,
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                'Proceed to Payment',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: ColorConstant.white,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
 
@@ -486,7 +491,10 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
                 top: 12.h,
                 right: 12.w,
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 4.h,
+                  ),
                   decoration: BoxDecoration(
                     color: ColorConstant.moyoGreen,
                     borderRadius: BorderRadius.circular(12.r),
@@ -507,7 +515,10 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
                 top: 12.h,
                 right: 12.w,
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 4.h,
+                  ),
                   decoration: BoxDecoration(
                     color: ColorConstant.moyoOrange,
                     borderRadius: BorderRadius.circular(12.r),
@@ -590,15 +601,15 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
                     ),
                     child: isSelected
                         ? Center(
-                      child: Container(
-                        height: 14.w,
-                        width: 14.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: ColorConstant.moyoOrange,
-                        ),
-                      ),
-                    )
+                            child: Container(
+                              height: 14.w,
+                              width: 14.w,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: ColorConstant.moyoOrange,
+                              ),
+                            ),
+                          )
                         : null,
                   ),
                 ],
@@ -648,22 +659,20 @@ class _PaymentOptionsScreenState extends State<PaymentOptionsScreen> {
         onSuccess: (paymentData) async {
           // Verify payment
 
-
           setState(() {
             _isProcessingPayment = false;
           });
 
-            Navigator.pop(context, {
-              'payment_type': selectedPaymentType,
-              'amount': payableAmount,
-              'total_amount': budget.totalAmount,
-              'service_days': budget.serviceDays,
-              'per_day_amount': budget.perDayBidAmount,
-              'payment_id': paymentData['payment_id'],
-              'order_id': paymentData['order_id'],
-              'status': 'success',
-            });
-
+          Navigator.pop(context, {
+            'payment_type': selectedPaymentType,
+            'amount': payableAmount,
+            'total_amount': budget.totalAmount,
+            'service_days': budget.serviceDays,
+            'per_day_amount': budget.perDayBidAmount,
+            'payment_id': paymentData['payment_id'],
+            'order_id': paymentData['order_id'],
+            'status': 'success',
+          });
         },
         onError: (error) {
           setState(() {
