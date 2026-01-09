@@ -23,7 +23,9 @@ class PaymentBudgetProvider extends ChangeNotifier {
   String? _currentPaymentType;
 
   PaymentBudgetModel? get paymentBudget => _paymentBudget;
+
   bool get isLoading => _isLoading;
+
   String? get error => _error;
 
   PaymentBudgetProvider() {
@@ -73,6 +75,9 @@ class PaymentBudgetProvider extends ChangeNotifier {
     }
   }
 
+  // Store payment amount for verification
+  double? _currentAmount;
+
   /// Verify payment with backend API
   Future<void> _verifyPaymentWithBackend({
     required String paymentId,
@@ -94,23 +99,26 @@ class PaymentBudgetProvider extends ChangeNotifier {
       debugPrint('Service ID: $serviceId');
       debugPrint('User ID: $userId');
       debugPrint('Payment Type: $paymentType');
+      debugPrint('Amount: ₹${_currentAmount ?? 0}');
       debugPrint('═══════════════════════════════════════');
 
-      final response = await http.put(
-        Uri.parse('$base_url/bid/api/razorpay/transactions/$paymentId'),
+      final response = await http.post(
+        Uri.parse('$base_url/bid/api/razorpay/capture-Payement'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $authToken',
         },
         body: json.encode({
           'user_id': userId,
-          'payment_method': 'razorpay',
           'payment_type': paymentType,
           'service_id': serviceId,
           'status': 'captured',
+          'payment_id': paymentId,
+          'amount': _currentAmount ?? 0,
         }),
       );
 
+      print(response.body);
       debugPrint('📊 Payment Verification Response:');
       debugPrint('Status Code: ${response.statusCode}');
       debugPrint('Response Body: ${response.body}');
@@ -262,6 +270,7 @@ class PaymentBudgetProvider extends ChangeNotifier {
     _onPaymentError = onError;
     _currentServiceId = serviceId;
     _currentPaymentType = paymentType;
+    _currentAmount = amount;
 
     final prefs = await SharedPreferences.getInstance();
     final user_id = prefs.getInt('user_id');
@@ -310,6 +319,7 @@ class PaymentBudgetProvider extends ChangeNotifier {
     _isLoading = false;
     _currentServiceId = null;
     _currentPaymentType = null;
+    _currentAmount = null;
     notifyListeners();
   }
 

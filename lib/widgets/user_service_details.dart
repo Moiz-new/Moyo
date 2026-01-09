@@ -544,61 +544,6 @@ class UserServiceDetails extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final statusLower = status.toLowerCase();
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-      child: Container(
-        padding: EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          spacing: 10,
-          children: [
-            _catSubCatDate(context, category, subCategory, date),
-
-            // Hide SOS section for completed and cancelled
-            if (!(statusLower == "completed" || statusLower == "cancelled"))
-              _sosPinTimeLeftCallMessage(context, pin, providerPhone),
-
-            _dpNameStatus(context, _currentStatusChip(context, status)),
-
-            _durationTypeDurationAndPrice(
-              context,
-              durationType,
-              duration,
-              price,
-            ),
-
-            _userAddress(context, address),
-
-            if (particular != null) _particular(context, particular!),
-
-            _description(context, description),
-
-            // Accept/ReBid buttons - show for 'open' and 'pending' if provider
-            if ((statusLower == "open" || statusLower == "pending") &&
-                isProvider)
-              _acceptReBid(context),
-
-            // Cancel button - show for 'assigned' status (user side)
-            if (statusLower == "assigned" || statusLower == "arrived")
-              _cancelTheService(context),
-
-            if (statusLower == "started") _taskComplete(context),
-
-            // Rate service - show for 'completed' status
-            if (statusLower == "completed" && !userRatingGiven)
-              _rateService(context),
-          ],
-        ),
-      ),
-    );
-  }
-
   // Update _acceptReBid to use the new API handler
   Widget _acceptReBid(BuildContext context) {
     return Padding(
@@ -783,9 +728,6 @@ class UserServiceDetails extends StatelessWidget {
     }
   }
 
-  // Keep all other existing methods unchanged...
-  // (Copy all the other methods from your original code)
-
   Widget _currentStatusChip(BuildContext context, String? status3) {
     final statusLower = status3?.toLowerCase() ?? '';
 
@@ -862,6 +804,14 @@ class UserServiceDetails extends StatelessWidget {
           textColor: Color(0xFF616161),
         );
 
+      case 'rebid':
+        return _buildStatusChip(
+          context,
+          text: "Re-Bid",
+          backgroundColor: Color(0xFFFFF3E0),
+          textColor: Color(0xFFE65100),
+        );
+
       // Legacy statuses for backward compatibility
       case 'confirmed':
         return _buildStatusChip(
@@ -916,6 +866,10 @@ class UserServiceDetails extends StatelessWidget {
     String? subCategory,
     String? date,
   ) {
+    bool isValid(String? value) {
+      return value != null && value.isNotEmpty && value.toLowerCase() != 'n/a';
+    }
+
     return Container(
       height: 44,
       padding: EdgeInsets.symmetric(horizontal: 16),
@@ -929,7 +883,7 @@ class UserServiceDetails extends StatelessWidget {
         children: [
           Flexible(
             child: Text(
-              "$category > $subCategory",
+              "${isValid(category) ? category : 'Service'} > ${isValid(subCategory) ? subCategory : 'Details'}",
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.roboto(
@@ -940,14 +894,15 @@ class UserServiceDetails extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            date ?? "No date",
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Colors.black.withAlpha(100),
+          if (isValid(date))
+            Text(
+              date!,
+              style: GoogleFonts.roboto(
+                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Colors.black.withAlpha(100),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1006,8 +961,12 @@ class UserServiceDetails extends StatelessWidget {
             ),
           ),
 
-          // Call and Message buttons - Hide for pending status
-          if (statusLower != "open")
+          // Call and Message buttons - Hide for pending, completed, cancelled, closed
+          if (statusLower != "open" &&
+              statusLower != "pending" &&
+              statusLower != "completed" &&
+              statusLower != "cancelled" &&
+              statusLower != "closed")
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -1075,38 +1034,15 @@ class UserServiceDetails extends StatelessWidget {
     );
   }
 
-  Widget _buildCenterContent(BuildContext context, String? pin) {
-    final statusLower = status.toLowerCase();
-
-    // Show PIN for assigned, arrived statuses
-    if (statusLower == "assigned" ||
-        statusLower == "arrived" ||
-        statusLower == "in_progress" ||
-        statusLower == "confirmed") {
-      return Column(
-        children: [
-          Text(
-            "PIN - ${pin ?? "No Pin"}",
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.roboto(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              color: Color(0xFF000000),
-            ),
-          ),
-          if (statusLower == "in_progress") _completeService(context),
-        ],
-      );
+  Widget _dpNameStatus(context, Widget child) {
+    bool isValid(String? value) {
+      return value != null && value.isNotEmpty && value.toLowerCase() != 'n/a';
     }
 
-    // Default - empty space
-    return SizedBox.shrink();
-  }
+    final hasValidName = isValid(name);
+    final hasValidRating = isValid(rating);
+    final shouldShowProfile = (status.toLowerCase() != "pending") || isProvider;
 
-  Widget _dpNameStatus(context, Widget child) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
@@ -1115,7 +1051,7 @@ class UserServiceDetails extends StatelessWidget {
         spacing: 10,
         mainAxisSize: MainAxisSize.max,
         children: [
-          if ((status != "pending") || isProvider)
+          if (shouldShowProfile && hasValidName)
             Container(
               clipBehavior: Clip.hardEdge,
               decoration: BoxDecoration(
@@ -1147,10 +1083,10 @@ class UserServiceDetails extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    if ((status != "pending") || isProvider)
+                    if (shouldShowProfile && hasValidName)
                       Expanded(
                         child: Text(
-                          name ?? "No Name",
+                          name!,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.roboto(
@@ -1163,6 +1099,8 @@ class UserServiceDetails extends StatelessWidget {
                           ),
                         ),
                       ),
+                    if (!hasValidName && shouldShowProfile)
+                      Expanded(child: SizedBox.shrink()),
                     Flexible(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -1173,14 +1111,14 @@ class UserServiceDetails extends StatelessWidget {
                     ),
                   ],
                 ),
-                if ((status != "pending") || isProvider)
+                if (shouldShowProfile && hasValidRating)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Flexible(
                         child: Text(
-                          "⭐ ${rating ?? '0.0'}",
+                          "⭐ $rating",
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.roboto(
@@ -1200,84 +1138,121 @@ class UserServiceDetails extends StatelessWidget {
     );
   }
 
+  // Replace the _durationTypeDurationAndPrice method with this fixed version:
+
   Widget _durationTypeDurationAndPrice(
     BuildContext context,
     String? durationType,
     String? duration,
     String? price,
   ) {
+    bool isValid(String? value) {
+      return value != null && value.isNotEmpty && value.toLowerCase() != 'n/a';
+    }
+
+    final hasValidDurationType = isValid(durationType);
+    final hasValidDuration = isValid(duration);
+    final hasValidPrice = isValid(price);
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Flexible(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: ColorConstant.moyoOrangeFade,
-                borderRadius: BorderRadius.all(Radius.circular(50)),
-              ),
-              child: Text(
-                durationType ?? "No Duration",
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.roboto(
-                  textStyle: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-                  color: ColorConstant.moyoOrange,
+          // Duration Type
+          if (hasValidDurationType)
+            Flexible(
+              flex: 2,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: ColorConstant.moyoOrangeFade,
+                  borderRadius: BorderRadius.all(Radius.circular(50)),
                 ),
-              ),
-            ),
-          ),
-          Flexible(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              spacing: 6,
-              children: [
-                SvgPicture.asset(
-                  "assets/icons/moyo_material-symbols_timer-outline.svg",
-                ),
-                Text(
-                  duration ?? "No Duration",
+                child: Text(
+                  durationType!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.roboto(
-                    textStyle: Theme.of(
-                      context,
-                    ).textTheme.labelLarge?.copyWith(color: Color(0xFF000000)),
+                    textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                    color: ColorConstant.moyoOrange,
                   ),
-                ),
-              ],
-            ),
-          ),
-          Flexible(
-            child: Text(
-              "₹ ${price ?? "No Price"} /-",
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.roboto(
-                textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Color(0xFF000000),
-                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-          ),
+
+          if (hasValidDurationType && (hasValidDuration || hasValidPrice))
+            SizedBox(width: 8),
+
+          // Duration
+          if (hasValidDuration)
+            Flexible(
+              flex: 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SvgPicture.asset(
+                    "assets/icons/moyo_material-symbols_timer-outline.svg",
+                    width: 16,
+                    height: 16,
+                  ),
+                  SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      duration!.replaceAll('\n', ' '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.roboto(
+                        textStyle: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: Color(0xFF000000)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          if (hasValidDuration && hasValidPrice) SizedBox(width: 8),
+
+          // Price
+          if (hasValidPrice)
+            Flexible(
+              flex: 2,
+              child: Text(
+                "₹$price/-",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: GoogleFonts.roboto(
+                  textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Color(0xFF000000),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
+  // Updated _userAddress to handle N/A
   Widget _userAddress(BuildContext context, String? address) {
+    if (address == null || address.isEmpty || address.toLowerCase() == 'n/a') {
+      return SizedBox.shrink();
+    }
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       child: Text(
-        address ?? "No Address",
+        address,
         textAlign: TextAlign.start,
         maxLines: 5,
         overflow: TextOverflow.ellipsis,
@@ -1291,7 +1266,20 @@ class UserServiceDetails extends StatelessWidget {
     );
   }
 
+  // Updated _particular to filter out N/A items
   Widget _particular(BuildContext context, List<String> particular) {
+    // Filter out N/A items
+    final validParticulars = particular.where((item) {
+      final lowerItem = item.toLowerCase();
+      return !lowerItem.contains('n/a') &&
+          !lowerItem.endsWith(': ') &&
+          item.trim().isNotEmpty;
+    }).toList();
+
+    if (validParticulars.isEmpty) {
+      return SizedBox.shrink();
+    }
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
@@ -1299,7 +1287,7 @@ class UserServiceDetails extends StatelessWidget {
         spacing: 10,
         runSpacing: 8,
         children: [
-          ...particular.map(
+          ...validParticulars.map(
             (e) => Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
@@ -1324,12 +1312,21 @@ class UserServiceDetails extends StatelessWidget {
     );
   }
 
+  // Updated _description to handle N/A
   Widget _description(BuildContext context, String? description) {
+    if (description == null ||
+        description.isEmpty ||
+        description.toLowerCase() == 'n/a' ||
+        description.toLowerCase() == 'no description' ||
+        description.toLowerCase() == 'no description available') {
+      return SizedBox.shrink();
+    }
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       child: Text(
-        description ?? "No description",
+        description,
         textAlign: TextAlign.start,
         maxLines: 5,
         overflow: TextOverflow.ellipsis,
@@ -1338,6 +1335,192 @@ class UserServiceDetails extends StatelessWidget {
             color: Color(0xFF000000),
             fontWeight: FontWeight.w500,
           ),
+        ),
+      ),
+    );
+  }
+
+  // Updated _buildCenterContent to handle N/A
+  Widget _buildCenterContent(BuildContext context, String? pin) {
+    final statusLower = status.toLowerCase();
+
+    bool isValidPin(String? value) {
+      return value != null &&
+          value.isNotEmpty &&
+          value.toLowerCase() != 'n/a' &&
+          value.toLowerCase() != 'no pin';
+    }
+
+    // Show PIN for assigned, arrived, in_progress statuses
+    if (statusLower == "assigned" ||
+        statusLower == "arrived" ||
+        statusLower == "in_progress" ||
+        statusLower == "confirmed") {
+      if (isValidPin(pin)) {
+        return Column(
+          children: [
+            Text(
+              "PIN - $pin",
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.roboto(
+                textStyle: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                color: Color(0xFF000000),
+              ),
+            ),
+            if (statusLower == "in_progress") _completeService(context),
+          ],
+        );
+      }
+    }
+
+    // Show status message for completed/cancelled/closed
+    if (statusLower == "completed") {
+      return Text(
+        "Service Completed",
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.roboto(
+          textStyle: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          color: ColorConstant.moyoGreen,
+        ),
+      );
+    }
+
+    if (statusLower == "cancelled") {
+      return Text(
+        "Service Cancelled",
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.roboto(
+          textStyle: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          color: Color(0xFFDB4A4C),
+        ),
+      );
+    }
+
+    if (statusLower == "closed") {
+      return Text(
+        "Service Closed",
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.roboto(
+          textStyle: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          color: Color(0xFF616161),
+        ),
+      );
+    }
+
+    // Default - empty space
+    return SizedBox.shrink();
+  }
+
+  // Alternative: If you want duration on separate lines, use this Column-based layout:
+
+  // Also update the build method to use the fixed widget:
+  @override
+  Widget build(BuildContext context) {
+    final statusLower = status.toLowerCase();
+
+    // Helper function to check if value is valid
+    bool isValid(String? value) {
+      return value != null && value.isNotEmpty && value.toLowerCase() != 'n/a';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      child: Container(
+        padding: EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            // Always show category and subcategory
+            _catSubCatDate(context, category, subCategory, date),
+            SizedBox(height: 10),
+
+            // Hide SOS section for completed, cancelled, and closed
+            if (!(statusLower == "completed" ||
+                statusLower == "cancelled" ||
+                statusLower == "closed"))
+              _sosPinTimeLeftCallMessage(context, pin, providerPhone),
+
+            if (!(statusLower == "completed" ||
+                statusLower == "cancelled" ||
+                statusLower == "closed"))
+              SizedBox(height: 10),
+
+            _dpNameStatus(context, _currentStatusChip(context, status)),
+            SizedBox(height: 10),
+
+            // Only show if at least one field has valid data
+            if (isValid(durationType) || isValid(duration) || isValid(price))
+              _durationTypeDurationAndPrice(
+                context,
+                durationType,
+                duration,
+                price,
+              ),
+
+            if (isValid(durationType) || isValid(duration) || isValid(price))
+              SizedBox(height: 10),
+
+            // Only show address if valid
+            if (isValid(address)) _userAddress(context, address),
+
+            if (isValid(address)) SizedBox(height: 10),
+
+            // Only show particulars if list has items
+            if (particular != null && particular!.isNotEmpty)
+              _particular(context, particular!),
+
+            if (particular != null && particular!.isNotEmpty)
+              SizedBox(height: 10),
+
+            // Only show description if valid
+            if (isValid(description)) _description(context, description),
+
+            if (isValid(description)) SizedBox(height: 10),
+
+            // Action buttons remain as they were
+            if ((statusLower == "open" || statusLower == "pending") &&
+                isProvider) ...[
+              _acceptReBid(context),
+              SizedBox(height: 10),
+            ],
+
+            if ((statusLower == "assigned" || statusLower == "arrived") &&
+                !isProvider) ...[
+              _cancelTheService(context),
+              SizedBox(height: 10),
+            ],
+
+            if ((statusLower == "started" || statusLower == "in_progress") &&
+                isProvider) ...[
+              _taskComplete(context),
+              SizedBox(height: 10),
+            ],
+
+            if (statusLower == "completed" &&
+                !userRatingGiven &&
+                !isProvider) ...[
+              _rateService(context),
+            ],
+          ],
         ),
       ),
     );
@@ -1360,7 +1543,7 @@ class UserServiceDetails extends StatelessWidget {
         },
       );
 
-// If cancellation was successful
+      // If cancellation was successful
       if (result == true && context.mounted) {
         _showSuccessSnackbar(context, 'Service cancelled successfully');
 

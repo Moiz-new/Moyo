@@ -155,11 +155,11 @@ class _ProviderReBidServiceState extends State<ProviderReBidService> {
     }
 
     if (services.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_outlined, size: 64, color: Colors.grey),
+            Icon(Icons.inbox_outlined, size: 80, color: Colors.grey.shade400),
             SizedBox(height: 16),
             Text(
               'No rebid services available',

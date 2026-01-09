@@ -40,7 +40,6 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
 
             if (earningsProvider.errorMessage != null &&
                 earningsProvider.earningsData == null) {
-              print(earningsProvider.errorMessage);
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -85,56 +84,52 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Today\'s Earnings',
+                              'Earnings',
                               style: TextStyle(
                                 color: ColorConstant.white,
                                 fontSize: 14.sp,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => _showDatePicker(
-                                    context,
-                                    earningsProvider,
-                                  ),
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 12.w,
-                                      vertical: 4.h,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: ColorConstant.white,
-                                      borderRadius: BorderRadius.circular(20.r),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          earningsProvider.getFormattedDate(),
-                                          style: TextStyle(
-                                            color: ColorConstant.black,
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8.w),
-                                        Icon(
-                                          Icons.keyboard_arrow_down,
-                                          color: ColorConstant.black,
-                                          size: 16.sp,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                            GestureDetector(
+                              onTap: () => _showFilterOptions(
+                                context,
+                                earningsProvider,
+                              ),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 4.h,
                                 ),
-                              ],
+                                decoration: BoxDecoration(
+                                  color: ColorConstant.white,
+                                  borderRadius: BorderRadius.circular(20.r),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      earningsProvider.getFormattedDate(),
+                                      style: TextStyle(
+                                        color: ColorConstant.black,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Icon(
+                                      Icons.keyboard_arrow_down,
+                                      color: ColorConstant.black,
+                                      size: 16.sp,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
                         SizedBox(height: 4.h),
                         Text(
-                          '₹${earningsProvider.getTodayEarnings().toStringAsFixed(0)}',
+                          '₹${_calculateTotalEarnings(earningsProvider)}',
                           style: TextStyle(
                             color: ColorConstant.white,
                             fontSize: 35.sp,
@@ -145,12 +140,12 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             _buildStatItem(
-                              'This Week',
-                              '₹${earningsProvider.getWeekEarnings().toStringAsFixed(0)}',
+                              'Today',
+                              '₹${earningsProvider.getTodayEarnings().toStringAsFixed(0)}',
                             ),
                             _buildStatItem(
-                              'This Month',
-                              '₹${earningsProvider.getMonthEarnings().toStringAsFixed(0)}',
+                              'This Week',
+                              '₹${earningsProvider.getWeekEarnings().toStringAsFixed(0)}',
                             ),
                             _buildStatItem(
                               'Jobs Done',
@@ -188,6 +183,15 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
         ),
       ),
     );
+  }
+
+  String _calculateTotalEarnings(EarningsProvider provider) {
+    final services = provider.getFilteredServices();
+    double total = 0.0;
+    for (var service in services) {
+      total += double.tryParse(service.totalAmount ?? '0') ?? 0.0;
+    }
+    return total.toStringAsFixed(0);
   }
 
   Widget _buildStatItem(String label, String value) {
@@ -249,9 +253,9 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
             ),
             SizedBox(height: 24.h),
             ElevatedButton.icon(
-              onPressed: () => _showDatePicker(context, provider),
+              onPressed: () => _showFilterOptions(context, provider),
               icon: Icon(Icons.date_range, size: 18.sp),
-              label: Text('Select Different Date'),
+              label: Text('Change Filter'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: ColorConstant.moyoOrange,
                 foregroundColor: Colors.white,
@@ -283,7 +287,6 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
   }
 
   Widget _buildEarningItem(ServiceEarning serviceEarning) {
-    final service = serviceEarning.service;
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
@@ -309,7 +312,7 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: Icon(
-                  _getIconForCategory(service?.category ?? ''),
+                  _getIconForService(serviceEarning.serviceTitle ?? ''),
                   color: Color(0xFF4CAF50),
                   size: 24.sp,
                 ),
@@ -320,7 +323,7 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      service?.title ?? 'Service',
+                      serviceEarning.serviceTitle ?? 'Service',
                       style: TextStyle(
                         color: ColorConstant.black,
                         fontSize: 16.sp,
@@ -328,13 +331,23 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
                       ),
                     ),
                     SizedBox(height: 4.h),
-                    Text(
-                      service?.category ?? 'N/A',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 14.sp,
+                          color: Colors.grey[600],
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          serviceEarning.getFormattedTime(),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -357,15 +370,13 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
                       vertical: 2.h,
                     ),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(
-                        service?.status ?? '',
-                      ).withOpacity(0.1),
+                      color: Colors.green.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Text(
-                      service?.status ?? 'N/A',
+                      'Completed',
                       style: TextStyle(
-                        color: _getStatusColor(service?.status ?? ''),
+                        color: Colors.green,
                         fontSize: 11.sp,
                         fontWeight: FontWeight.w600,
                       ),
@@ -382,104 +393,49 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
             children: [
               Expanded(
                 child: _buildDetailItem(
-                  Icons.access_time,
-                  'Time',
-                  serviceEarning.getFormattedTime(),
+                  Icons.calendar_today,
+                  'Date',
+                  serviceEarning.getFormattedDate(),
                 ),
               ),
               Expanded(
                 child: _buildDetailItem(
-                  Icons.calendar_today,
-                  'Date',
-                  serviceEarning.getRelativeTime(),
+                  Icons.timer_outlined,
+                  'Duration',
+                  serviceEarning.getDuration(),
                 ),
               ),
             ],
           ),
-          if (service?.location != null) ...[
+          SizedBox(height: 8.h),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDetailItem(
+                  Icons.currency_rupee,
+                  'Base Fare',
+                  '₹${double.tryParse(serviceEarning.baseFare ?? '0')?.toStringAsFixed(0) ?? '0'}',
+                ),
+              ),
+              /*Expanded(
+                child: _buildDetailItem(
+                  Icons.schedule,
+                  'Waiting Time',
+                  '${serviceEarning.waitingMinutes ?? 0} min',
+                ),
+              ),*/
+            ],
+          ),
+          if (serviceEarning.waitingCharges != null &&
+              serviceEarning.waitingCharges! > 0) ...[
             SizedBox(height: 8.h),
             _buildDetailItem(
-              Icons.location_on_outlined,
-              'Location',
-              service!.location!,
+              Icons.money,
+              'Waiting Charges',
+              '₹${serviceEarning.waitingCharges}',
             ),
           ],
-          if (service?.durationValue != null) ...[
-            SizedBox(height: 8.h),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildDetailItem(
-                    Icons.timer_outlined,
-                    'Duration',
-                    '${service!.durationValue} ${service.durationUnit ?? 'hrs'}',
-                  ),
-                ),
-                Expanded(
-                  child: _buildDetailItem(
-                    Icons.payment,
-                    'Payment',
-                    service.paymentMethod ?? 'N/A',
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (service?.dynamicFields != null &&
-              service!.dynamicFields!.isNotEmpty) ...[
-            SizedBox(height: 12.h),
-            Divider(height: 1, color: Colors.grey[200]),
-            SizedBox(height: 12.h),
-            Text(
-              'Service Details',
-              style: TextStyle(
-                color: ColorConstant.black,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            ...service.dynamicFields!.entries.map((entry) {
-              return Padding(
-                padding: EdgeInsets.only(bottom: 6.h),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.check_circle_outline,
-                      size: 16.sp,
-                      color: Colors.grey[600],
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: '${entry.key}: ',
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            TextSpan(
-                              text: '${entry.value}',
-                              style: TextStyle(
-                                color: ColorConstant.black,
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ],
+
         ],
       ),
     );
@@ -519,62 +475,229 @@ class _ProviderEarningScreenState extends State<ProviderEarningScreen> {
     );
   }
 
-  IconData _getIconForCategory(String category) {
-    switch (category.toLowerCase()) {
-      case 'shepherd':
-        return Icons.pets_outlined;
-      case 'cleaning':
-        return Icons.cleaning_services_outlined;
-      case 'plumbing':
-        return Icons.plumbing_outlined;
-      case 'electrical':
-        return Icons.electrical_services_outlined;
-      case 'painting':
-        return Icons.format_paint_outlined;
-      case 'carpentry':
-        return Icons.construction_outlined;
-      default:
-        return Icons.home_repair_service_outlined;
+  IconData _getIconForService(String serviceTitle) {
+    final title = serviceTitle.toLowerCase();
+    if (title.contains('maid') || title.contains('cleaning')) {
+      return Icons.cleaning_services_outlined;
+    } else if (title.contains('driver')) {
+      return Icons.local_taxi_outlined;
+    } else if (title.contains('plumb')) {
+      return Icons.plumbing_outlined;
+    } else if (title.contains('electric')) {
+      return Icons.electrical_services_outlined;
+    } else if (title.contains('paint')) {
+      return Icons.format_paint_outlined;
+    } else if (title.contains('carpenter') || title.contains('carpentry')) {
+      return Icons.construction_outlined;
+    } else if (title.contains('shepherd') || title.contains('pet')) {
+      return Icons.pets_outlined;
+    } else {
+      return Icons.home_repair_service_outlined;
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      case 'cancelled':
-        return Colors.red;
-      case 'in_progress':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  void _showDatePicker(BuildContext context, EarningsProvider provider) async {
-    final DateTime? picked = await showDatePicker(
+  void _showFilterOptions(BuildContext context, EarningsProvider provider) {
+    showModalBottomSheet(
       context: context,
-      initialDate: provider.selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: ColorConstant.moyoOrange,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.all(20.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                'Select Filter',
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.bold,
+                  color: ColorConstant.black,
+                ),
+              ),
+              SizedBox(height: 20.h),
+              _buildFilterOption(
+                context,
+                provider,
+                'All Time',
+                Icons.all_inclusive,
+                FilterType.all,
+              ),
+              _buildFilterOption(
+                context,
+                provider,
+                'By Day',
+                Icons.calendar_today,
+                FilterType.day,
+              ),
+              _buildFilterOption(
+                context,
+                provider,
+                'By Month',
+                Icons.calendar_month,
+                FilterType.month,
+              ),
+              _buildFilterOption(
+                context,
+                provider,
+                'Date Range',
+                Icons.date_range,
+                FilterType.range,
+              ),
+              SizedBox(height: 20.h),
+            ],
           ),
-          child: child!,
         );
       },
     );
+  }
 
-    if (picked != null && picked != provider.selectedDate) {
-      provider.setDate(picked);
-    }
+  Widget _buildFilterOption(
+      BuildContext context,
+      EarningsProvider provider,
+      String title,
+      IconData icon,
+      FilterType filterType,
+      ) {
+    final isSelected = provider.filterType == filterType;
+
+    return GestureDetector(
+      onTap: () async {
+        Navigator.pop(context);
+
+        if (filterType == FilterType.day) {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: provider.selectedDate,
+            firstDate: DateTime(2020),
+            lastDate: DateTime.now(),
+            builder: (context, child) {
+              return Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: ColorScheme.light(
+                    primary: ColorConstant.moyoOrange,
+                    onPrimary: Colors.white,
+                    onSurface: Colors.black,
+                  ),
+                ),
+                child: child!,
+              );
+            },
+          );
+          if (picked != null) {
+            provider.setFilterType(FilterType.day);
+            provider.setDate(picked);
+          }
+        } else if (filterType == FilterType.month) {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: provider.selectedDate,
+            firstDate: DateTime(2020),
+            lastDate: DateTime.now(),
+            builder: (context, child) {
+              return Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: ColorScheme.light(
+                    primary: ColorConstant.moyoOrange,
+                    onPrimary: Colors.white,
+                    onSurface: Colors.black,
+                  ),
+                ),
+                child: child!,
+              );
+            },
+          );
+          if (picked != null) {
+            provider.setFilterType(FilterType.month);
+            provider.setDate(picked);
+          }
+        } else if (filterType == FilterType.range) {
+          final picked = await showDateRangePicker(
+            context: context,
+            firstDate: DateTime(2020),
+            lastDate: DateTime.now(),
+            initialDateRange: provider.rangeStartDate != null &&
+                provider.rangeEndDate != null
+                ? DateTimeRange(
+              start: provider.rangeStartDate!,
+              end: provider.rangeEndDate!,
+            )
+                : null,
+            builder: (context, child) {
+              return Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: ColorScheme.light(
+                    primary: ColorConstant.moyoOrange,
+                    onPrimary: Colors.white,
+                    onSurface: Colors.black,
+                  ),
+                ),
+                child: child!,
+              );
+            },
+          );
+          if (picked != null) {
+            provider.setDateRange(picked.start, picked.end);
+          }
+        } else {
+          provider.setFilterType(filterType);
+        }
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12.h),
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? ColorConstant.moyoOrange.withOpacity(0.1)
+              : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(
+            color: isSelected ? ColorConstant.moyoOrange : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? ColorConstant.moyoOrange : Colors.grey[600],
+              size: 24.sp,
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color:
+                  isSelected ? ColorConstant.moyoOrange : ColorConstant.black,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: ColorConstant.moyoOrange,
+                size: 24.sp,
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

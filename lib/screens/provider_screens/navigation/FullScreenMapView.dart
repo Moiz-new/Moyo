@@ -6,8 +6,12 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'dart:math' show cos, sqrt, asin;
+import 'package:dart_nats/dart_nats.dart';
+
+import '../../../NATS Service/NatsService.dart';
 
 class FullScreenMapView extends StatefulWidget {
+  final String serviceId;
   final double providerLat;
   final double providerLng;
   final double serviceLat;
@@ -16,6 +20,7 @@ class FullScreenMapView extends StatefulWidget {
 
   const FullScreenMapView({
     Key? key,
+    required this.serviceId,
     required this.providerLat,
     required this.providerLng,
     required this.serviceLat,
@@ -28,6 +33,7 @@ class FullScreenMapView extends StatefulWidget {
 }
 
 class _FullScreenMapViewState extends State<FullScreenMapView> {
+  late final NatsService _natsService;
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
@@ -40,14 +46,160 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   bool _isLoadingRoute = true;
   MapType _currentMapType = MapType.normal;
 
+  // Real-time location data
+  Map<String, dynamic>? _locationData;
+  Subscription? _locationSubscription;
+
+  // Current positions (will be updated in real-time)
+  late double _currentProviderLat;
+  late double _currentProviderLng;
+  late double _currentServiceLat;
+  late double _currentServiceLng;
+
   static const String GOOGLE_MAPS_API_KEY =
       'AIzaSyBqTGBtJYtoRpvJFpF6tls1jcwlbiNcEVI';
 
   @override
   void initState() {
     super.initState();
+    _natsService = NatsService();
     _calculatedArrivalTime = widget.arrivalTime;
+
+    // Initialize with provided coordinates
+    _currentProviderLat = widget.providerLat;
+    _currentProviderLng = widget.providerLng;
+    _currentServiceLat = widget.serviceLat;
+    _currentServiceLng = widget.serviceLng;
+
     _loadCustomMarkers();
+    _initializeNatsAndSubscribe();
+  }
+
+  Future<void> _initializeNatsAndSubscribe() async {
+    try {
+      // Connect to NATS if not already connected
+      if (!_natsService.isConnected) {
+        final connected = await _natsService.connect(
+          url: 'nats://api.moyointernational.com:4222',
+        );
+
+        if (!connected) {
+          debugPrint('Failed to connect to NATS server');
+          return;
+        }
+      }
+
+      // Subscribe to location updates
+      _subscribeToLocationUpdates();
+    } catch (e) {
+      debugPrint('Error initializing NATS: $e');
+    }
+  }
+
+  void _subscribeToLocationUpdates() {
+    // Create subscription request
+    final requestData = jsonEncode({'service_id': widget.serviceId});
+
+    // Subscribe to the location info subject
+    _locationSubscription = _natsService.subscribe('service.location.info', (
+      message,
+    ) {
+      try {
+        final responseData = jsonDecode(message);
+
+        // Handle both nested and direct response formats
+        final data =
+            responseData is Map<String, dynamic> &&
+                responseData['success'] == true &&
+                responseData['data'] != null
+            ? responseData['data']
+            : responseData;
+
+        // Update location data
+        _updateLocationData(data);
+      } catch (e) {
+        debugPrint('Error processing location update: $e');
+      }
+    });
+
+    // Send initial request to get location data
+    _requestInitialLocation();
+
+    debugPrint(
+      '✅ Subscribed to location updates for service: ${widget.serviceId}',
+    );
+  }
+
+  Future<void> _requestInitialLocation() async {
+    try {
+      final requestData = jsonEncode({'service_id': widget.serviceId});
+
+      final response = await _natsService.request(
+        'service.location.info',
+        requestData,
+        timeout: const Duration(seconds: 10),
+      );
+
+      if (response != null) {
+        final responseData = jsonDecode(response);
+
+        final data =
+            responseData is Map<String, dynamic> &&
+                responseData['success'] == true &&
+                responseData['data'] != null
+            ? responseData['data']
+            : responseData;
+
+        _updateLocationData(data);
+      }
+    } catch (e) {
+      debugPrint('Error requesting initial location: $e');
+    }
+  }
+
+  void _updateLocationData(Map<String, dynamic> data) {
+    if (!mounted) return;
+
+    // Parse new coordinates
+    final newServiceLat = double.tryParse(data['latitude']?.toString() ?? '0');
+    final newServiceLng = double.tryParse(data['longitude']?.toString() ?? '0');
+    final newProviderLat = double.tryParse(
+      data['provider']?['latitude']?.toString() ?? '0',
+    );
+    final newProviderLng = double.tryParse(
+      data['provider']?['longitude']?.toString() ?? '0',
+    );
+
+    if (newServiceLat == null ||
+        newServiceLng == null ||
+        newProviderLat == null ||
+        newProviderLng == null) {
+      return;
+    }
+
+    // Check if location has actually changed
+    bool hasChanged =
+        _currentProviderLat != newProviderLat ||
+        _currentProviderLng != newProviderLng ||
+        _currentServiceLat != newServiceLat ||
+        _currentServiceLng != newServiceLng;
+
+    if (hasChanged) {
+      setState(() {
+        _locationData = data;
+        _currentProviderLat = newProviderLat;
+        _currentProviderLng = newProviderLng;
+        _currentServiceLat = newServiceLat;
+        _currentServiceLng = newServiceLng;
+      });
+
+      debugPrint(
+        '📍 Location updated - Provider: ($newProviderLat, $newProviderLng)',
+      );
+
+      // Update map with new locations
+      _setupMap(animate: true);
+    }
   }
 
   Future<void> _loadCustomMarkers() async {
@@ -79,10 +231,10 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   }
 
   Future<BitmapDescriptor> _createCustomMarkerIcon(
-      IconData iconData,
-      Color color,
-      double size,
-      ) async {
+    IconData iconData,
+    Color color,
+    double size,
+  ) async {
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
 
@@ -140,9 +292,9 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   }
 
   Future<List<LatLng>> _getDirectionsRoute(
-      LatLng origin,
-      LatLng destination,
-      ) async {
+    LatLng origin,
+    LatLng destination,
+  ) async {
     try {
       final String url =
           'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$GOOGLE_MAPS_API_KEY&mode=driving';
@@ -165,8 +317,9 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
               if (duration != null) {
                 final durationValue = duration['value'];
                 setState(() {
-                  _calculatedArrivalTime =
-                      (durationValue / 60).round().toString();
+                  _calculatedArrivalTime = (durationValue / 60)
+                      .round()
+                      .toString();
                 });
               }
 
@@ -198,17 +351,18 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
     }
   }
 
-  void _setupMap() async {
+  void _setupMap({bool animate = false}) async {
     if (!_markersLoaded) return;
 
-    final providerLocation = LatLng(widget.providerLat, widget.providerLng);
-    final serviceLocation = LatLng(widget.serviceLat, widget.serviceLng);
+    final providerLocation = LatLng(_currentProviderLat, _currentProviderLng);
+    final serviceLocation = LatLng(_currentServiceLat, _currentServiceLng);
 
     _markers = {
       Marker(
         markerId: const MarkerId('service_location'),
         position: serviceLocation,
-        icon: _userMarkerIcon ??
+        icon:
+            _userMarkerIcon ??
             BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
         anchor: const Offset(0.5, 0.5),
         infoWindow: const InfoWindow(
@@ -220,7 +374,8 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
       Marker(
         markerId: const MarkerId('provider_location'),
         position: providerLocation,
-        icon: _providerMarkerIcon ??
+        icon:
+            _providerMarkerIcon ??
             BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
         anchor: const Offset(0.5, 0.5),
         infoWindow: const InfoWindow(
@@ -277,9 +432,20 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
 
     if (_mapController != null) {
       final bounds = _calculateBounds([serviceLocation, providerLocation]);
-      Future.delayed(const Duration(milliseconds: 300), () {
-        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
-      });
+
+      if (animate) {
+        // Smooth animation when location updates
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngBounds(bounds, 100),
+        );
+      } else {
+        // Initial setup without animation
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLngBounds(bounds, 100),
+          );
+        });
+      }
     }
   }
 
@@ -314,7 +480,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   }
 
   void _centerOnProvider() {
-    final providerLocation = LatLng(widget.providerLat, widget.providerLng);
+    final providerLocation = LatLng(_currentProviderLat, _currentProviderLng);
     _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: providerLocation, zoom: 16),
@@ -323,8 +489,8 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   }
 
   void _centerOnRoute() {
-    final providerLocation = LatLng(widget.providerLat, widget.providerLng);
-    final serviceLocation = LatLng(widget.serviceLat, widget.serviceLng);
+    final providerLocation = LatLng(_currentProviderLat, _currentProviderLng);
+    final serviceLocation = LatLng(_currentServiceLat, _currentServiceLng);
     final bounds = _calculateBounds([serviceLocation, providerLocation]);
     _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
   }
@@ -337,7 +503,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
           // Map
           GoogleMap(
             initialCameraPosition: CameraPosition(
-              target: LatLng(widget.providerLat, widget.providerLng),
+              target: LatLng(_currentProviderLat, _currentProviderLng),
               zoom: 13,
             ),
             markers: _markers,
@@ -364,6 +530,49 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
               ),
             ),
 
+          // Real-time update indicator
+          if (_locationData != null)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 70.h,
+              left: 16.w,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(20.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8.w,
+                      height: 8.h,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Live Tracking',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // Top bar with back button and info
           Positioned(
             top: 0,
@@ -380,10 +589,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.6),
-                    Colors.transparent,
-                  ],
+                  colors: [Colors.black.withOpacity(0.6), Colors.transparent],
                 ),
               ),
               child: Row(
@@ -526,10 +732,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
                     ],
                   ),
                   child: IconButton(
-                    icon: const Icon(
-                      Icons.my_location,
-                      color: Colors.orange,
-                    ),
+                    icon: const Icon(Icons.my_location, color: Colors.orange),
                     onPressed: _centerOnProvider,
                   ),
                 ),
@@ -550,10 +753,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
                     ],
                   ),
                   child: IconButton(
-                    icon: const Icon(
-                      Icons.route,
-                      color: Colors.blue,
-                    ),
+                    icon: const Icon(Icons.route, color: Colors.blue),
                     onPressed: _centerOnRoute,
                   ),
                 ),
@@ -655,6 +855,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
 
   @override
   void dispose() {
+    _locationSubscription?.unSub();
     _mapController?.dispose();
     super.dispose();
   }

@@ -298,7 +298,7 @@ class NatsService {
     }
 
     try {
-      //debugPrint('📞 Requesting "$subject": $request');
+      debugPrint('📞 Requesting "$subject": $request');
       final requestBytes = _stringToBytes(request);
 
       final response = await _client!
@@ -306,7 +306,7 @@ class NatsService {
           .timeout(timeout);
 
       final responseStr = _bytesToString(response?.data);
-      //debugPrint('📨 Response received: $responseStr');
+      debugPrint('📨 Response received: $responseStr');
       return responseStr;
     } catch (e) {
       debugPrint('❌ Request Error: $e');

@@ -463,32 +463,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
     }
   }
 
-  List<String> _extractParticulars(
-    Map<String, dynamic>? dynamicFields,
-    Map<String, dynamic>? serviceData,
-  ) {
-    List<String> particulars = [];
-
-    if (dynamicFields != null) {
-      dynamicFields.forEach((key, value) {
-        if (value != null && value.toString().isNotEmpty) {
-          particulars.add('$key: $value');
-        }
-      });
-    }
-
-    // Add duration info
-    if (serviceData != null) {
-      final durationValue = serviceData['duration_value'];
-      final durationUnit = serviceData['duration_unit'];
-      if (durationValue != null && durationUnit != null) {
-        particulars.add('$durationValue $durationUnit');
-      }
-    }
-
-    return particulars;
-  }
-
   @override
   void dispose() {
     _mapController?.dispose();
@@ -567,7 +541,10 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                     razorpayProvider,
                     child,
                   ) {
-                    final user = _serviceData?['user'];
+                    // FIXED: Correct data access - 'user' is the provider object
+                    final providerData = _serviceData?['user'];
+                    final providerUser =
+                        providerData?['user']; // This is the actual user details
                     final dynamicFields = _serviceData?['dynamic_fields'];
                     final providerId = _serviceData?['assigned_provider_id']
                         ?.toString();
@@ -580,8 +557,6 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                         razorpayProvider.resetPaymentState();
                       });
                     }
-                    print("object");
-                    print(user?['user']['mobile'] ?? 'N/A');
 
                     // Listen to payment error
                     if (razorpayProvider.errorMessage != null &&
@@ -591,6 +566,7 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                         razorpayProvider.resetPaymentState();
                       });
                     }
+
                     return SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
                       child: Column(
@@ -604,38 +580,30 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                               context,
                               razorpayProvider,
                             ),
-                            providerId:
-                                _serviceData?['assigned_provider_id']
-                                    ?.toString() ??
-                                'N/A',
-                            category: _serviceData?['category'] ?? 'N/A',
-                            subCategory: _serviceData?['service'] ?? 'N/A',
+                            providerId: providerId ?? '',
+                            category: _serviceData?['category'] ?? '',
+                            subCategory: _serviceData?['service'] ?? '',
                             date: _formatDate(_serviceData?['schedule_date']),
                             pin: _serviceData?['status'] == "in_progress"
-                                ? (_serviceData?['end_otp'] ?? 'N/A')
-                                : (_serviceData?['start_otp'] ?? 'N/A'),
-                            providerPhone: user?['user']['mobile'] ?? 'N/A',
-                            dp:
-                                user?['image'] ??
-                                'https://picsum.photos/200/200',
-                            name: user != null
-                                ? '${user['user']['firstname'] ?? ''} ${user['user']['lastname'] ?? ''}'
+                                ? (_serviceData?['end_otp'] ?? '')
+                                : (_serviceData?['start_otp'] ?? ''),
+                            providerPhone: providerUser?['mobile'] ?? '',
+                            dp: providerUser?['image'] ?? '',
+                            name: providerUser != null
+                                ? '${providerUser['firstname'] ?? ''} ${providerUser['lastname'] ?? ''}'
                                       .trim()
-                                : 'N/A',
+                                : '',
                             rating: '4.5',
-                            status: _serviceData?['status'] ?? 'N/A',
-                            durationType: _serviceData?['service_mode'] == 'hrs'
-                                ? 'Hourly'
-                                : (_serviceData?['service_mode'] ?? 'N/A'),
-                            // CHANGED: Use the safely parsed boolean value
+                            // Or get from API if available
+                            status: _serviceData?['status'] ?? '',
+                            durationType: _getServiceModeDisplay(
+                              _serviceData?['service_mode'],
+                            ),
                             userRatingGiven: ratingGiven,
-                            duration:
-                                _serviceData?['duration_value'] != null &&
-                                    _serviceData?['duration_unit'] != null
-                                ? '${_serviceData!['duration_value']} ${_serviceData!['duration_unit']}'
-                                : 'N/A',
-                            price: _serviceData?['final_amount']?.toString() ?? 'N/A',
-                            address: _serviceData?['location'] ?? 'N/A',
+                            duration: _getDurationDisplay(_serviceData),
+                            price:
+                                _serviceData?['final_amount']?.toString() ?? '',
+                            address: _serviceData?['location'] ?? '',
                             particular: _extractParticulars(
                               dynamicFields,
                               _serviceData,
@@ -656,23 +624,22 @@ class _AssignedandCompleteUserServiceDetailsScreenState
                                         _serviceData?['duration_unit'] ??
                                         'hours',
                                     categoryName:
-                                        _serviceData?['category'] ?? 'N/A',
+                                        _serviceData?['category'] ?? '',
                                     subCategoryName:
-                                        _serviceData?['service'] ?? 'N/A',
+                                        _serviceData?['service'] ?? '',
                                     authToken: authToken,
                                   ),
                                 ),
                               );
                             },
-                            description:
-                                _serviceData?['description'] ??
-                                'No description available',
+                            description: _serviceData?['description'] ?? '',
                           ),
-
                           if (_locationData != null &&
                               (_serviceData?['status'] ?? '') != "completed" &&
                               (_serviceData?['status'] ?? '') != "cancelled" &&
-                              (_serviceData?['status'] ?? '') != "in_progress") ...[
+                              (_serviceData?['status'] ?? '') != "closed" &&
+                              (_serviceData?['status'] ?? '') !=
+                                  "in_progress") ...[
                             const SizedBox(height: 16),
                             Padding(
                               padding: const EdgeInsets.symmetric(
@@ -766,19 +733,208 @@ class _AssignedandCompleteUserServiceDetailsScreenState
     );
   }
 
+  String _getDurationDisplay(Map<String, dynamic>? serviceData) {
+    if (serviceData == null) return '';
+
+    final serviceMode = serviceData['service_mode']?.toString().toLowerCase();
+
+    switch (serviceMode) {
+      case 'hrs':
+        final durationValue = serviceData['duration_value'];
+        final durationUnit = serviceData['duration_unit'];
+        if (durationValue != null && durationUnit != null) {
+          return '$durationValue $durationUnit';
+        }
+        return '';
+
+      case 'day':
+        final serviceDays = serviceData['service_days'];
+        final startDate = serviceData['start_date'];
+        final endDate = serviceData['end_date'];
+
+        if (serviceDays != null) {
+          String display = '$serviceDays ${serviceDays == 1 ? 'day' : 'days'}';
+
+          if (startDate != null && endDate != null) {
+            try {
+              final start = DateTime.parse(startDate);
+              final end = DateTime.parse(endDate);
+              display +=
+                  ' (${_formatDateShort(start)} - ${_formatDateShort(end)})';
+            } catch (e) {}
+          }
+          return display;
+        }
+        return '';
+
+      case 'task':
+        return 'One-time task';
+
+      default:
+        return '';
+    }
+  }
+
+  // Updated _getServiceModeDisplay to return empty string instead of N/A
+  String _getServiceModeDisplay(String? serviceMode) {
+    if (serviceMode == null || serviceMode.isEmpty) return '';
+
+    switch (serviceMode.toLowerCase()) {
+      case 'hrs':
+        return 'Hourly';
+      case 'day':
+        return 'Daily';
+      case 'task':
+        return 'Task Based';
+      default:
+        return serviceMode;
+    }
+  }
+
+  // Updated _extractParticulars to filter out N/A values
+  List<String> _extractParticulars(
+    Map<String, dynamic>? dynamicFields,
+    Map<String, dynamic>? serviceData,
+  ) {
+    List<String> particulars = [];
+
+    // Helper to check if value is valid
+    bool isValid(dynamic value) {
+      if (value == null) return false;
+      final str = value.toString();
+      return str.isNotEmpty &&
+          str.toLowerCase() != 'n/a' &&
+          str.toLowerCase() != 'null';
+    }
+
+    // Add dynamic fields first
+    if (dynamicFields != null) {
+      dynamicFields.forEach((key, value) {
+        if (isValid(value)) {
+          final formattedKey =
+              key.substring(0, 1).toUpperCase() + key.substring(1);
+
+          if (value is bool) {
+            particulars.add('$formattedKey: ${value ? "Yes" : "No"}');
+          } else {
+            particulars.add('$formattedKey: $value');
+          }
+        }
+      });
+    }
+
+    // Add service mode specific info
+    if (serviceData != null) {
+      final serviceMode = serviceData['service_mode']?.toString().toLowerCase();
+
+      switch (serviceMode) {
+        case 'hrs':
+          final durationValue = serviceData['duration_value'];
+          final durationUnit = serviceData['duration_unit'];
+          if (isValid(durationValue) && isValid(durationUnit)) {
+            particulars.add('Duration: $durationValue $durationUnit');
+          }
+
+          final extraTime = serviceData['extra_time_minutes'];
+          if (isValid(extraTime) && extraTime > 0) {
+            particulars.add('Extra Time: $extraTime mins');
+          }
+          break;
+
+        case 'day':
+          final serviceDays = serviceData['service_days'];
+          final tenure = serviceData['tenure'];
+
+          if (isValid(serviceDays)) {
+            particulars.add('Service Days: $serviceDays');
+          }
+          if (isValid(tenure)) {
+            particulars.add('Tenure: $tenure');
+          }
+
+          final startDate = serviceData['start_date'];
+          final endDate = serviceData['end_date'];
+          if (isValid(startDate) && isValid(endDate)) {
+            try {
+              final start = DateTime.parse(startDate);
+              final end = DateTime.parse(endDate);
+              particulars.add(
+                'Period: ${_formatDateShort(start)} to ${_formatDateShort(end)}',
+              );
+            } catch (e) {}
+          }
+          break;
+
+        case 'task':
+          final serviceType = serviceData['service_type'];
+          if (isValid(serviceType)) {
+            particulars.add(
+              'Type: ${serviceType == "instant" ? "Instant Service" : "Scheduled Service"}',
+            );
+          }
+          break;
+      }
+
+      // Add payment information
+      final paymentMethod = serviceData['payment_method'];
+      final paymentType = serviceData['payment_type'];
+
+      if (isValid(paymentMethod)) {
+        final methodText = paymentMethod == "postpaid"
+            ? "Post-paid"
+            : "Pre-paid";
+        particulars.add('Payment: $methodText');
+      }
+
+      if (isValid(paymentType)) {
+        particulars.add('Method: ${paymentType.toString().toUpperCase()}');
+      }
+
+      final budget = serviceData['budget'];
+      final finalAmount = serviceData['final_amount'];
+      if (isValid(budget) && isValid(finalAmount) && budget != finalAmount) {
+        particulars.add('Original Budget: ₹$budget');
+      }
+    }
+
+    return particulars;
+  }
+
+  String _formatDateShort(DateTime date) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}';
+  }
+
   void _handleCompleteService(
     BuildContext context,
     RazorpayProvider razorpayProvider,
   ) {
     final amount =
         double.tryParse(_serviceData?['budget']?.toString() ?? '0') ?? 0;
-    // CHANGED: Access user from root level
-    final user = _serviceData?['user'];
-    final userName = user != null
-        ? '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}'.trim()
+
+    // FIXED: Correct user data access
+    final providerData = _serviceData?['user'];
+    final providerUser = providerData?['user'];
+
+    final userName = providerUser != null
+        ? '${providerUser['firstname'] ?? ''} ${providerUser['lastname'] ?? ''}'
+              .trim()
         : 'Customer';
-    final userPhone = user?['mobile'] ?? '';
-    final userEmail = user?['email'] ?? '';
+    final userPhone = providerUser?['mobile'] ?? '';
+    final userEmail = providerUser?['email'] ?? '';
 
     if (amount <= 0) {
       ScaffoldMessenger.of(
