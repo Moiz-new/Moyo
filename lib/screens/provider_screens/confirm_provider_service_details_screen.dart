@@ -1236,16 +1236,12 @@ class _ConfirmProviderServiceDetailsScreenState
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) {
           return FullScreenMapView(
-            providerLat: providerLat,
-            providerLng: providerLng,
-            serviceLat: serviceLat,
-            serviceLng: serviceLng,
             arrivalTime: _arrivalTime,
             serviceId: widget.serviceId,
           );
         },
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 1.0); // Slide from bottom
+          const begin = Offset(0.0, 1.0); //
           const end = Offset.zero;
           const curve = Curves.easeInOut;
 

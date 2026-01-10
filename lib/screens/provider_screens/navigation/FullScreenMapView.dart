@@ -7,24 +7,18 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'dart:math' show cos, sqrt, asin;
 import 'package:dart_nats/dart_nats.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io' show Platform;
 
 import '../../../NATS Service/NatsService.dart';
 
 class FullScreenMapView extends StatefulWidget {
   final String serviceId;
-  final double providerLat;
-  final double providerLng;
-  final double serviceLat;
-  final double serviceLng;
   final String? arrivalTime;
 
   const FullScreenMapView({
     Key? key,
     required this.serviceId,
-    required this.providerLat,
-    required this.providerLng,
-    required this.serviceLat,
-    required this.serviceLng,
     this.arrivalTime,
   }) : super(key: key);
 
@@ -65,11 +59,11 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
     _natsService = NatsService();
     _calculatedArrivalTime = widget.arrivalTime;
 
-    // Initialize with provided coordinates
-    _currentProviderLat = widget.providerLat;
-    _currentProviderLng = widget.providerLng;
-    _currentServiceLat = widget.serviceLat;
-    _currentServiceLng = widget.serviceLng;
+    // Initialize with default coordinates (will be updated from API)
+    _currentProviderLat = 0.0;
+    _currentProviderLng = 0.0;
+    _currentServiceLat = 0.0;
+    _currentServiceLng = 0.0;
 
     _loadCustomMarkers();
     _initializeNatsAndSubscribe();
@@ -102,16 +96,16 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
 
     // Subscribe to the location info subject
     _locationSubscription = _natsService.subscribe('service.location.info', (
-      message,
-    ) {
+        message,
+        ) {
       try {
         final responseData = jsonDecode(message);
 
         // Handle both nested and direct response formats
         final data =
-            responseData is Map<String, dynamic> &&
-                responseData['success'] == true &&
-                responseData['data'] != null
+        responseData is Map<String, dynamic> &&
+            responseData['success'] == true &&
+            responseData['data'] != null
             ? responseData['data']
             : responseData;
 
@@ -144,9 +138,9 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
         final responseData = jsonDecode(response);
 
         final data =
-            responseData is Map<String, dynamic> &&
-                responseData['success'] == true &&
-                responseData['data'] != null
+        responseData is Map<String, dynamic> &&
+            responseData['success'] == true &&
+            responseData['data'] != null
             ? responseData['data']
             : responseData;
 
@@ -173,16 +167,21 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
     if (newServiceLat == null ||
         newServiceLng == null ||
         newProviderLat == null ||
-        newProviderLng == null) {
+        newProviderLng == null ||
+        newServiceLat == 0.0 ||
+        newServiceLng == 0.0 ||
+        newProviderLat == 0.0 ||
+        newProviderLng == 0.0) {
+      debugPrint('⚠️ Invalid location data received');
       return;
     }
 
     // Check if location has actually changed
     bool hasChanged =
         _currentProviderLat != newProviderLat ||
-        _currentProviderLng != newProviderLng ||
-        _currentServiceLat != newServiceLat ||
-        _currentServiceLng != newServiceLng;
+            _currentProviderLng != newProviderLng ||
+            _currentServiceLat != newServiceLat ||
+            _currentServiceLng != newServiceLng;
 
     if (hasChanged) {
       setState(() {
@@ -191,10 +190,11 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
         _currentProviderLng = newProviderLng;
         _currentServiceLat = newServiceLat;
         _currentServiceLng = newServiceLng;
+        _isLoadingRoute = false; // Stop loading once we have data
       });
 
       debugPrint(
-        '📍 Location updated - Provider: ($newProviderLat, $newProviderLng)',
+        '📍 Location updated - Provider: ($newProviderLat, $newProviderLng), Service: ($newServiceLat, $newServiceLng)',
       );
 
       // Update map with new locations
@@ -231,10 +231,10 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   }
 
   Future<BitmapDescriptor> _createCustomMarkerIcon(
-    IconData iconData,
-    Color color,
-    double size,
-  ) async {
+      IconData iconData,
+      Color color,
+      double size,
+      ) async {
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
 
@@ -292,9 +292,9 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   }
 
   Future<List<LatLng>> _getDirectionsRoute(
-    LatLng origin,
-    LatLng destination,
-  ) async {
+      LatLng origin,
+      LatLng destination,
+      ) async {
     try {
       final String url =
           'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$GOOGLE_MAPS_API_KEY&mode=driving';
@@ -354,6 +354,13 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   void _setupMap({bool animate = false}) async {
     if (!_markersLoaded) return;
 
+    // Don't setup map if we don't have valid coordinates yet
+    if (_currentProviderLat == 0.0 || _currentProviderLng == 0.0 ||
+        _currentServiceLat == 0.0 || _currentServiceLng == 0.0) {
+      debugPrint('⚠️ Waiting for valid coordinates from API...');
+      return;
+    }
+
     final providerLocation = LatLng(_currentProviderLat, _currentProviderLng);
     final serviceLocation = LatLng(_currentServiceLat, _currentServiceLng);
 
@@ -362,7 +369,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
         markerId: const MarkerId('service_location'),
         position: serviceLocation,
         icon:
-            _userMarkerIcon ??
+        _userMarkerIcon ??
             BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
         anchor: const Offset(0.5, 0.5),
         infoWindow: const InfoWindow(
@@ -375,7 +382,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
         markerId: const MarkerId('provider_location'),
         position: providerLocation,
         icon:
-            _providerMarkerIcon ??
+        _providerMarkerIcon ??
             BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
         anchor: const Offset(0.5, 0.5),
         infoWindow: const InfoWindow(
@@ -493,6 +500,58 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
     final serviceLocation = LatLng(_currentServiceLat, _currentServiceLng);
     final bounds = _calculateBounds([serviceLocation, providerLocation]);
     _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
+  }
+
+  // Open directions in external navigation app
+  Future<void> _openDirections() async {
+    try {
+      final destination = '$_currentServiceLat,$_currentServiceLng';
+      final origin = '$_currentProviderLat,$_currentProviderLng';
+
+      Uri? url;
+
+      // Try to open in platform-specific navigation apps
+      if (Platform.isIOS) {
+        // Try Apple Maps first on iOS
+        url = Uri.parse(
+          'http://maps.apple.com/?saddr=$origin&daddr=$destination&dirflg=d',
+        );
+
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
+      // Fallback to Google Maps (works on both platforms)
+      url = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&travelmode=driving',
+      );
+
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        // Show error if navigation app can't be opened
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not open navigation app'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error opening directions: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error opening navigation'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -761,91 +820,124 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
             ),
           ),
 
-          // Bottom legend
+          // Bottom section with legend and directions button
           Positioned(
             bottom: 16.h,
             left: 16.w,
             right: 16.w,
-            child: Container(
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 12.w,
-                        height: 12.w,
-                        decoration: const BoxDecoration(
-                          color: Colors.orange,
-                          shape: BoxShape.circle,
-                        ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Start Directions Button
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.only(bottom: 12.h),
+                  child: ElevatedButton.icon(
+                    onPressed: _openDirections,
+                    icon: const Icon(Icons.navigation, color: Colors.white),
+                    label: Text(
+                      'Start Navigation',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
-                      SizedBox(width: 12.w),
-                      Text(
-                        'Your Location (Provider)',
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5B8DEE),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      elevation: 4,
+                      shadowColor: Colors.black.withOpacity(0.3),
+                    ),
+                  ),
+                ),
+
+                // Legend
+                Container(
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  SizedBox(height: 8.h),
-                  Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        width: 12.w,
-                        height: 12.w,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 12.w,
+                            height: 12.w,
+                            decoration: const BoxDecoration(
+                              color: Colors.orange,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Text(
+                            'Your Location (Provider)',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 12.w),
-                      Text(
-                        'Service Location (Destination)',
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Container(
+                            width: 12.w,
+                            height: 12.w,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Text(
+                            'Service Location (Destination)',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Container(
+                            width: 20.w,
+                            height: 3.h,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF5B8DEE),
+                              borderRadius: BorderRadius.circular(2.r),
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Text(
+                            'Route Path',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  SizedBox(height: 8.h),
-                  Row(
-                    children: [
-                      Container(
-                        width: 20.w,
-                        height: 3.h,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF5B8DEE),
-                          borderRadius: BorderRadius.circular(2.r),
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      Text(
-                        'Route Path',
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
