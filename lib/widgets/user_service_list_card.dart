@@ -236,6 +236,8 @@ class UserServiceListCard extends StatelessWidget {
                                           ),
                                         ),
                                       ),
+
+
                                   ],
                                 ),
                               ),
@@ -303,6 +305,25 @@ class UserServiceListCard extends StatelessWidget {
           ),
           child: Text(
             "Cancelled",
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              textStyle: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              color: Color(0xFFDB4A4C),
+            ),
+          ),
+        );
+      case 'in_progress':
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Color(0xFFFEE8E8),
+            borderRadius: BorderRadius.all(Radius.circular(50)),
+          ),
+          child: Text(
+            "In Progress",
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.roboto(

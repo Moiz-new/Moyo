@@ -52,6 +52,7 @@ class _UserOngoingServiceState extends State<UserOngoingService> {
     // Return bid amount if available, otherwise return budget
     if (service.bids.isNotEmpty) {
       print(service.finalAmount);
+      print("dchbhbhjfv ${service.status}");
       return service.finalAmount;
     }
     return service.budget;

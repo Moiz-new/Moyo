@@ -925,6 +925,9 @@ class _AssignedandCompleteUserServiceDetailsScreenState
     final amount =
         double.tryParse(_serviceData?['budget']?.toString() ?? '0') ?? 0;
 
+
+    print("dhhfbhf  $_serviceData");
+
     // FIXED: Correct user data access
     final providerData = _serviceData?['user'];
     final providerUser = providerData?['user'];

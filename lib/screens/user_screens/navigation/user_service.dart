@@ -1,5 +1,5 @@
 import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/ServiceProvider.dart';
-import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/user_Pending_service.dart';
+import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/user_pending_service.dart';
 import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/user_completed_service.dart';
 import 'package:first_flutter/screens/user_screens/navigation/user_service_tab_body/user_ongoing_service.dart';
 import 'package:flutter/material.dart';
