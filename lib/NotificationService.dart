@@ -173,14 +173,28 @@ class NotificationService {
 
   // Handle Foreground Messages (App is Open)
   static void _setupForegroundMessageHandler() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       print("=== 🔔 FOREGROUND Message Received ===");
       print("Title: ${message.notification?.title}");
       print("Body: ${message.notification?.body}");
       print("Data: ${message.data}");
+      final idddd = message.data;
+
+
+print("vdhdhvd $idddd");
+      // final iddsss = idddd.service_id;
+// final iddsss = idddd.data.
+      final pref = await SharedPreferences.getInstance();
+
+      bool providerIdsss = pref.getBool("providerIdsss") ?? false;
+
+      print("dbdbfdhvhdvfhd $providerIdsss");
+
+      if (providerIdsss == false) {
+        _showLocalNotification(message);
+      }
 
       // Show local notification when app is in foreground with conditional sound
-      _showLocalNotification(message);
     });
   }
 
@@ -367,10 +381,10 @@ class NotificationService {
   }
 
   // ================== Navigation Logic (UNCHANGED but with better logging) ==================
-  static void _performNavigation(
+  static Future<void> _performNavigation(
     BuildContext context,
     Map<String, dynamic> data,
-  ) {
+  ) async {
     print("🚀 Starting navigation with data: $data");
 
     // Service Confirmed
@@ -418,6 +432,8 @@ class NotificationService {
       print("📍 [CHAT] Navigating to ProviderChatScreen");
       print("   User: $userName");
       print("   Service ID: $serviceId");
+
+
 
       Navigator.of(context)
           .push(

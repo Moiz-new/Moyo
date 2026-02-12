@@ -464,7 +464,7 @@ class _ProviderConfirmedServiceState extends State<ProviderConfirmedService>
       case 'arrived':
         return 'Arrived';
       case 'in_progress':
-        return 'In Progress';
+        return 'Progress';
       case 'completed':
         return 'Completed';
       case 'cancelled':

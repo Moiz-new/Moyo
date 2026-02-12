@@ -294,6 +294,7 @@ class _ProviderChatScreenState extends State<ProviderChatScreen> with WidgetsBin
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
+    Provider.of<ProviderChatProvider>(context, listen: false).reset();
     super.dispose();
   }
 

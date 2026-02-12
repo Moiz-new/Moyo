@@ -379,23 +379,51 @@ class ProviderChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void reset() {
-    _isLoading = false;
-    _error = null;
-    _chatId = null;
-    _messages = [];
-    _isScreenActive = false;
+  // void reset() {
+  //   _isLoading = false;
+  //   _error = null;
+  //   _chatId = null;
+  //   _messages = [];
+  //   _isScreenActive = false;
+  //
+  //   // Unsubscribe from all subscriptions
+  //   if (_chatSubscription != null && _chatId != null) {
+  //     _natsService.unsubscribe('chat.message.$_chatId');
+  //     _chatSubscription = null;
+  //   }
+  //
+  //   if (_historySubscription != null && _chatId != null) {
+  //     _natsService.unsubscribe('chat.history.$_chatId');
+  //     _historySubscription = null;
+  //   }
+  //
+  //   notifyListeners();
+  // }
 
-    // Unsubscribe from all subscriptions
-    if (_chatSubscription != null && _chatId != null) {
-      _natsService.unsubscribe('chat.message.$_chatId');
+
+  void reset() {
+    print("🧹 Resetting chat provider");
+
+    // ✅ Store old chatId before clearing
+    final oldChatId = _chatId;
+
+    // ✅ Unsubscribe FIRST
+    if (_chatSubscription != null && oldChatId != null) {
+      _natsService.unsubscribe('chat.message.$oldChatId');
       _chatSubscription = null;
     }
 
-    if (_historySubscription != null && _chatId != null) {
-      _natsService.unsubscribe('chat.history.$_chatId');
+    if (_historySubscription != null && oldChatId != null) {
+      _natsService.unsubscribe('chat.history.$oldChatId');
       _historySubscription = null;
     }
+
+    // ✅ Now clear state
+    _isLoading = false;
+    _error = null;
+    _chatId = null;
+    _messages.clear();
+    _isScreenActive = false;
 
     notifyListeners();
   }

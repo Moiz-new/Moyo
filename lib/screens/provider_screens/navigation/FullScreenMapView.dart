@@ -26,7 +26,8 @@ class FullScreenMapView extends StatefulWidget {
   State<FullScreenMapView> createState() => _FullScreenMapViewState();
 }
 
-class _FullScreenMapViewState extends State<FullScreenMapView> {
+class _FullScreenMapViewState extends State<FullScreenMapView>
+    with WidgetsBindingObserver {
   late final NatsService _natsService;
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
@@ -49,6 +50,8 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   late double _currentProviderLng;
   late double _currentServiceLat;
   late double _currentServiceLng;
+  bool _hasOpenedNavigation = false;
+
 
   static const String GOOGLE_MAPS_API_KEY =
       'AIzaSyBqTGBtJYtoRpvJFpF6tls1jcwlbiNcEVI';
@@ -64,10 +67,29 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
     _currentProviderLng = 0.0;
     _currentServiceLat = 0.0;
     _currentServiceLng = 0.0;
-
+    WidgetsBinding.instance.addObserver(this);
     _loadCustomMarkers();
     _initializeNatsAndSubscribe();
+    // _openDirections();
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      debugPrint("📱 App resumed from navigation");
+
+      // 🔥 You can run any logic here
+      _centerOnRoute();        // Recenter map
+      _setupMap(animate: true); // Refresh route if needed
+    }
+
+    if (state == AppLifecycleState.paused) {
+      debugPrint("🚀 App moved to background (Navigation opened)");
+    }
+  }
+
 
   Future<void> _initializeNatsAndSubscribe() async {
     try {
@@ -154,15 +176,12 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
   void _updateLocationData(Map<String, dynamic> data) {
     if (!mounted) return;
 
-    // Parse new coordinates
     final newServiceLat = double.tryParse(data['latitude']?.toString() ?? '0');
     final newServiceLng = double.tryParse(data['longitude']?.toString() ?? '0');
-    final newProviderLat = double.tryParse(
-      data['provider']?['latitude']?.toString() ?? '0',
-    );
-    final newProviderLng = double.tryParse(
-      data['provider']?['longitude']?.toString() ?? '0',
-    );
+    final newProviderLat =
+    double.tryParse(data['provider']?['latitude']?.toString() ?? '0');
+    final newProviderLng =
+    double.tryParse(data['provider']?['longitude']?.toString() ?? '0');
 
     if (newServiceLat == null ||
         newServiceLng == null ||
@@ -172,11 +191,9 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
         newServiceLng == 0.0 ||
         newProviderLat == 0.0 ||
         newProviderLng == 0.0) {
-      debugPrint('⚠️ Invalid location data received');
       return;
     }
 
-    // Check if location has actually changed
     bool hasChanged =
         _currentProviderLat != newProviderLat ||
             _currentProviderLng != newProviderLng ||
@@ -190,15 +207,19 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
         _currentProviderLng = newProviderLng;
         _currentServiceLat = newServiceLat;
         _currentServiceLng = newServiceLng;
-        _isLoadingRoute = false; // Stop loading once we have data
+        _isLoadingRoute = false;
       });
 
-      debugPrint(
-        '📍 Location updated - Provider: ($newProviderLat, $newProviderLng), Service: ($newServiceLat, $newServiceLng)',
-      );
-
-      // Update map with new locations
       _setupMap(animate: true);
+
+      // 🔥 AUTO OPEN NAVIGATION (ONLY FIRST TIME)
+      if (!_hasOpenedNavigation) {
+        _hasOpenedNavigation = true;
+
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _openDirections();
+        });
+      }
     }
   }
 
@@ -947,6 +968,7 @@ class _FullScreenMapViewState extends State<FullScreenMapView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _locationSubscription?.unSub();
     _mapController?.dispose();
     super.dispose();

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
 import '../../../../constants/colorConstant/color_constant.dart';
@@ -53,7 +55,30 @@ class _UserChatScreenState extends State<UserChatScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeChat();
     });
+    loadchat();
+
   }
+
+
+
+  Future<void> loadchat () async {
+    final pref = await SharedPreferences.getInstance();
+
+  var dbjdfd =  await pref.setBool("providerIdsss", true);
+
+  print("dnfbdfbjdbf $dbjdfd");
+  }
+
+  Future<void> loadchatddd () async {
+    final pref = await SharedPreferences.getInstance();
+    await pref.setBool("providerIdsss", false);
+
+    bool? value = pref.getBool("providerIdsss");
+
+    print("Stored value: $value");
+
+  }
+
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -94,6 +119,10 @@ class _UserChatScreenState extends State<UserChatScreen>
         providerId: widget.providerId!,
       );
 
+
+
+
+
       if (success) {
         setState(() {
           _chatInitialized = true;
@@ -131,6 +160,8 @@ class _UserChatScreenState extends State<UserChatScreen>
           );
         }
       }
+
+
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -265,6 +296,7 @@ class _UserChatScreenState extends State<UserChatScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopPolling();
+    loadchatddd();
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -273,48 +305,54 @@ class _UserChatScreenState extends State<UserChatScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: ColorConstant.scaffoldGray,
-      appBar: _buildAppBar(),
-      body: Consumer<UserChatProvider>(
-        builder: (context, chatProvider, child) {
-          // ✅ AUTO SCROLL WHEN NEW MESSAGE ARRIVES
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (chatProvider.messages.isNotEmpty && mounted) {
-              _scrollToBottom();
-            }
-          });
-
-          if (chatProvider.isLoading && !_chatInitialized) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: ColorConstant.moyoOrange),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'Loading chat...',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14.sp,
-                      color: Color(0xFF7A7A7A),
+    return WillPopScope(
+      onWillPop: () async {
+        await loadchatddd();
+        return true; // allow pop
+      },
+      child: Scaffold(
+        backgroundColor: ColorConstant.scaffoldGray,
+        appBar: _buildAppBar(),
+        body: Consumer<UserChatProvider>(
+          builder: (context, chatProvider, child) {
+            // ✅ AUTO SCROLL WHEN NEW MESSAGE ARRIVES
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (chatProvider.messages.isNotEmpty && mounted) {
+                _scrollToBottom();
+              }
+            });
+      
+            if (chatProvider.isLoading && !_chatInitialized) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: ColorConstant.moyoOrange),
+                    SizedBox(height: 16.h),
+                    Text(
+                      'Loading chat...',
+                      style: GoogleFonts.roboto(
+                        fontSize: 14.sp,
+                        color: Color(0xFF7A7A7A),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              );
+            }
+      
+            return Column(
+              children: [
+                Expanded(
+                  child: chatProvider.messages.isEmpty
+                      ? _buildEmptyState()
+                      : _buildMessagesList(chatProvider),
+                ),
+                _buildMessageInput(),
+              ],
             );
-          }
-
-          return Column(
-            children: [
-              Expanded(
-                child: chatProvider.messages.isEmpty
-                    ? _buildEmptyState()
-                    : _buildMessagesList(chatProvider),
-              ),
-              _buildMessageInput(),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -358,7 +396,10 @@ class _UserChatScreenState extends State<UserChatScreen>
       shadowColor: Colors.black.withOpacity(0.1),
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Color(0xFF1D1B20)),
-        onPressed: () => Navigator.pop(context),
+        onPressed: () async {
+          await loadchatddd();   // ✅ run before pop
+          Navigator.pop(context);
+        },
       ),
       title: Row(
         children: [

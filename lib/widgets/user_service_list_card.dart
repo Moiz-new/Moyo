@@ -335,6 +335,26 @@ class UserServiceListCard extends StatelessWidget {
           ),
         );
 
+        case 'assigned':
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Color(0xFFDEEAFA),
+            borderRadius: BorderRadius.all(Radius.circular(50)),
+          ),
+          child: Text(
+            "Assigned",
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.roboto(
+              textStyle: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+              color: Color(0xFF1A4E88),
+            ),
+          ),
+        );
+
       default:
         return SizedBox(width: 0, height: 0);
     }

@@ -205,6 +205,8 @@ class _ProviderServiceDetailsScreenState
   }
 
   String _formatDuration(Map<String, dynamic> data) {
+
+    print("jbdfbjbcjbsdjj $data");
     final mode = data['service_mode'];
     final value = data['duration_value'];
     final unit = data['duration_unit'];
